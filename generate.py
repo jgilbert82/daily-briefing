@@ -21,6 +21,8 @@ TASK_LISTS = [
     {"id": "TU5mY3ZnTFY4eWdpaDlGSQ",            "name": "LATER"},
 ]
 
+GITHUB_REPO = "jgilbert82/daily-briefing"
+
 # ── GOOGLE TASKS ──────────────────────────────────────────────────────────────
 
 def get_tasks_service():
@@ -81,7 +83,7 @@ def generate_summary(tasks):
         system=(
             f"You are a sharp, concise executive assistant briefing Joseph, "
             f"a Senior Property Manager at CBRE Copenhagen. Today is {today}. "
-            f"Write a 3–5 sentence morning briefing: highlight the most urgent/overdue items, "
+            f"Write a 3-5 sentence morning briefing: highlight the most urgent/overdue items, "
             f"what to prioritise today, and one clear suggestion. "
             f"Plain prose only. No bullets. No markdown."
         ),
@@ -95,7 +97,7 @@ def extract_priorities(tasks, today_str):
     today   = [t for t in tasks if t["due"] == today_str]
     nxt     = [t for t in tasks if t["list"] == "NEXT" and not t["due"]]
     picks   = (overdue + today + nxt)[:5]
-    return [f"{i+1} · {t['title'][:55]}{'…' if len(t['title'])>55 else ''}" for i, t in enumerate(picks)]
+    return [f"{i+1} · {t['title'][:55]}{'...' if len(t['title'])>55 else ''}" for i, t in enumerate(picks)]
 
 
 # ── HTML HELPERS ──────────────────────────────────────────────────────────────
@@ -113,7 +115,7 @@ def badge_label(cls, due):
     if cls == "overdue":  return "Overdue"
     if cls == "today":    return "Today"
     if cls == "upcoming": return fmt_date(due)
-    return "—"
+    return "-"
 
 def esc(s):
     return (s or "").replace("&","&amp;").replace("<","&lt;").replace(">","&gt;").replace('"',"&quot;")
@@ -121,15 +123,15 @@ def esc(s):
 def render_task(t, today_str):
     cls  = classify_date(t["due"], today_str)
     note = (f'<div class="task-note">{esc((t["note"] or "")[:120])}'
-            f'{"…" if t["note"] and len(t["note"])>120 else ""}</div>') if t["note"] else ""
+            f'{"..." if t["note"] and len(t["note"])>120 else ""}</div>') if t["note"] else ""
     link = esc(t.get("link","#"))
     return (f'<div class="task" data-status="{cls}" data-list="{esc(t["list"])}">'
             f'<a class="task-title" href="{link}" target="_blank" rel="noopener">'
-            f'{esc(t["title"])}<span class="open-icon">↗</span></a>'
+            f'{esc(t["title"])}<span class="open-icon">&#x2197;</span></a>'
             f'<div class="task-meta">'
             f'<span class="badge {cls}">{badge_label(cls, t["due"])}</span>'
             f'<span class="list-tag">{esc(t["list"])}</span>'
-            f'<a class="open-link" href="{link}" target="_blank" rel="noopener">Open in Tasks ↗</a>'
+            f'<a class="open-link" href="{link}" target="_blank" rel="noopener">Open in Tasks &#x2197;</a>'
             f'</div>{note}</div>')
 
 def render_col(title, tasks, today_str, delay):
@@ -137,12 +139,13 @@ def render_col(title, tasks, today_str, delay):
         '<div class="empty-col">Clear.</div>'
     return (f'<div class="col" style="animation-delay:{delay}s">'
             f'<div class="col-head">{title}<span class="col-count">{len(tasks)}</span></div>'
+            f'<div class="no-results">No tasks match this filter.</div>'
             f'{items}</div>')
 
 
 # ── HTML BUILD ────────────────────────────────────────────────────────────────
 
-def build_html(tasks, summary, priorities, today_str):
+def build_html(tasks, summary, priorities, today_str, pat):
     overdue_count = sum(1 for t in tasks if classify_date(t["due"], today_str) == "overdue")
     today_count   = sum(1 for t in tasks if classify_date(t["due"], today_str) == "today")
     next_count    = sum(1 for t in tasks if t["list"] == "NEXT")
@@ -155,8 +158,9 @@ def build_html(tasks, summary, priorities, today_str):
     seen.update(id(t) for t in col2)
     col3 = [t for t in tasks if id(t) not in seen]
 
-    chips        = "\n".join(f'<span class="priority-chip">{esc(p)}</span>' for p in priorities)
+    chips         = "\n".join(f'<span class="priority-chip">{esc(p)}</span>' for p in priorities)
     today_display = datetime.strptime(today_str, "%Y-%m-%d").strftime("%A %-d %B %Y")
+    generated_at  = datetime.utcnow().strftime("%H:%M UTC")
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -166,85 +170,76 @@ def build_html(tasks, summary, priorities, today_str):
 <title>Daily Briefing · {today_display}</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-:root {{
-  --ink:#1a1a2e; --paper:#f5f0e8; --cream:#ede8dc;
-  --accent:#c8502a; --gold:#b08a20; --muted:#7a7468; --border:#d4cfc5;
-}}
-*{{ box-sizing:border-box; margin:0; padding:0; }}
-body{{ font-family:'DM Sans',sans-serif; background:var(--paper); color:var(--ink); min-height:100vh; }}
-.masthead{{ background:var(--ink); color:var(--paper); padding:28px 40px 22px; display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:12px; border-bottom:4px solid var(--accent); }}
-.masthead h1{{ font-family:'Playfair Display',serif; font-size:2.6rem; letter-spacing:-0.5px; line-height:1; }}
-.edition{{ font-size:.7rem; letter-spacing:3px; text-transform:uppercase; color:var(--accent); margin-top:7px; font-weight:500; }}
-.date-line{{ font-family:'Playfair Display',serif; font-size:1rem; opacity:.85; text-align:right; }}
-.sub{{ font-size:.68rem; letter-spacing:2px; text-transform:uppercase; opacity:.45; margin-top:5px; text-align:right; }}
-.last-updated{{ font-size:.6rem; letter-spacing:1px; text-transform:uppercase; color:rgba(255,255,255,.3); margin-top:6px; text-align:right; }}
-
-/* STATS BAR */
-.stats-bar{{ background:var(--ink); display:flex; padding:16px 40px; border-top:1px solid rgba(255,255,255,.08); flex-wrap:wrap; gap:32px; }}
-.stat{{ cursor:pointer; padding:6px 12px; border:2px solid transparent; border-radius:2px; transition:border-color 0.15s, background 0.15s; }}
-.stat:hover{{ border-color:rgba(255,255,255,0.2); }}
-.stat.active{{ border-color:var(--accent) !important; background:rgba(200,80,42,0.15); }}
-.stat.active-gold{{ border-color:var(--gold) !important; background:rgba(176,138,32,0.15); }}
-.stat strong{{ font-family:'Playfair Display',serif; font-size:1.8rem; display:block; line-height:1; color:var(--paper); }}
-.stat span{{ font-size:.6rem; letter-spacing:2.5px; text-transform:uppercase; color:rgba(255,255,255,.35); }}
-.stat.red strong{{ color:#e07a5a; }}
-.stat.gold strong{{ color:#d4aa50; }}
-.stat-hint{{ font-size:.58rem; color:rgba(255,255,255,.2); letter-spacing:1px; display:block; margin-top:3px; }}
-
-/* FILTER BAR */
-.filter-bar{{ display:none; background:#2a2a3e; padding:10px 40px; align-items:center; gap:12px; border-bottom:2px solid var(--accent); }}
-.filter-bar.visible{{ display:flex; }}
-.filter-label{{ font-size:.65rem; letter-spacing:2px; text-transform:uppercase; color:rgba(255,255,255,.5); }}
-.filter-active{{ font-size:.75rem; color:var(--accent); font-weight:500; letter-spacing:1px; }}
-.filter-clear{{ font-size:.62rem; letter-spacing:1.5px; text-transform:uppercase; color:rgba(255,255,255,.4); border:1px solid rgba(255,255,255,.2); padding:3px 10px; cursor:pointer; margin-left:auto; background:transparent; font-family:'DM Sans',sans-serif; transition:all 0.15s; }}
-.filter-clear:hover{{ color:var(--paper); border-color:var(--paper); }}
-
-/* AI STRIP */
-.ai-strip{{ background:var(--cream); border-bottom:2px solid var(--border); padding:20px 40px; display:flex; gap:20px; align-items:flex-start; }}
-.ai-label{{ font-size:.58rem; letter-spacing:3px; text-transform:uppercase; color:var(--gold); font-weight:600; white-space:nowrap; padding-top:3px; flex-shrink:0; }}
-.ai-text{{ font-size:.85rem; line-height:1.8; color:var(--ink); font-style:italic; }}
-.ai-priority{{ margin-top:10px; display:flex; gap:8px; flex-wrap:wrap; font-style:normal; }}
-.priority-chip{{ font-size:.62rem; letter-spacing:1px; padding:3px 10px; border:1px solid var(--gold); color:var(--gold); background:rgba(176,138,32,.08); font-weight:500; }}
-
-/* COLUMNS */
-.columns{{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:0; padding:0 40px 60px; }}
-.col{{ padding:28px 24px 0; border-right:1px solid var(--border); animation:fadeUp .4s ease both; }}
-.col:first-child{{ padding-left:0; }}
-.col:last-child{{ border-right:none; padding-right:0; }}
-@keyframes fadeUp{{ from{{ opacity:0; transform:translateY(8px); }} to{{ opacity:1; transform:translateY(0); }} }}
-.col-head{{ font-size:.6rem; letter-spacing:4px; text-transform:uppercase; color:var(--accent); font-weight:600; border-bottom:2px solid var(--ink); padding-bottom:9px; margin-bottom:18px; display:flex; justify-content:space-between; align-items:baseline; }}
-.col-count{{ font-size:.75rem; color:var(--muted); letter-spacing:0; font-weight:400; font-family:'Playfair Display',serif; }}
-
-/* TASKS */
-.task{{ border-bottom:1px solid var(--border); padding:11px 0; transition:opacity 0.2s; }}
-.task:last-child{{ border-bottom:none; }}
-.task.hidden{{ display:none; }}
-a.task-title{{ font-size:.83rem; font-weight:500; line-height:1.45; color:var(--ink); display:block; margin-bottom:5px; text-decoration:underline; text-decoration-color:var(--border); text-underline-offset:3px; transition:color 0.15s, text-decoration-color 0.15s; }}
-a.task-title:hover{{ color:var(--accent); text-decoration-color:var(--accent); }}
-.open-icon{{ font-size:.7rem; color:var(--accent); margin-left:4px; opacity:0.6; }}
-.task-meta{{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }}
-.badge{{ font-size:.56rem; letter-spacing:1.5px; text-transform:uppercase; font-weight:600; padding:2px 7px; border:1px solid; display:inline-block; }}
-.badge.overdue{{ color:var(--accent); border-color:var(--accent); background:rgba(200,80,42,.07); }}
-.badge.today{{ color:var(--gold); border-color:var(--gold); background:rgba(176,138,32,.08); }}
-.badge.upcoming{{ color:var(--muted); border-color:var(--border); }}
-.badge.no-date{{ color:var(--border); border-color:var(--border); }}
-.list-tag{{ font-size:.62rem; color:var(--muted); }}
-.open-link{{ font-size:.6rem; letter-spacing:1px; text-transform:uppercase; color:var(--accent); text-decoration:none; font-weight:500; border:1px solid var(--accent); padding:1px 7px; opacity:0.7; transition:opacity 0.15s, background 0.15s; margin-left:auto; }}
-.open-link:hover{{ opacity:1; background:rgba(200,80,42,.07); }}
-.task-note{{ font-size:.71rem; color:var(--muted); margin-top:5px; line-height:1.5; border-left:2px solid var(--border); padding-left:8px; font-style:italic; }}
-.empty-col{{ font-size:.8rem; color:var(--muted); font-style:italic; padding:12px 0; }}
-.no-results{{ font-size:.8rem; color:var(--muted); font-style:italic; padding:16px 0; display:none; }}
-.col.has-filter .no-results{{ display:block; }}
-
-.footer{{ text-align:center; padding:20px; font-size:.65rem; color:var(--muted); letter-spacing:1px; text-transform:uppercase; border-top:1px solid var(--border); }}
-
-@media (max-width:860px){{
-  .masthead{{ padding:20px; }} .stats-bar{{ padding:14px 20px; gap:16px; }}
-  .ai-strip{{ padding:16px 20px; flex-direction:column; gap:8px; }}
-  .filter-bar{{ padding:10px 20px; }}
-  .columns{{ grid-template-columns:1fr; padding:0 20px 40px; }}
-  .col{{ padding:20px 0 0; border-right:none; border-bottom:1px solid var(--border); padding-bottom:20px; }}
-  .col:last-child{{ border-bottom:none; }}
+:root{{--ink:#1a1a2e;--paper:#f5f0e8;--cream:#ede8dc;--accent:#c8502a;--gold:#b08a20;--muted:#7a7468;--border:#d4cfc5;}}
+*{{box-sizing:border-box;margin:0;padding:0;}}
+body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);min-height:100vh;}}
+.masthead{{background:var(--ink);color:var(--paper);padding:28px 40px 22px;display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:12px;border-bottom:4px solid var(--accent);}}
+.masthead h1{{font-family:'Playfair Display',serif;font-size:2.6rem;letter-spacing:-0.5px;line-height:1;}}
+.edition{{font-size:.7rem;letter-spacing:3px;text-transform:uppercase;color:var(--accent);margin-top:7px;font-weight:500;}}
+.masthead-right{{text-align:right;}}
+.date-line{{font-family:'Playfair Display',serif;font-size:1rem;opacity:.85;}}
+.sub{{font-size:.68rem;letter-spacing:2px;text-transform:uppercase;opacity:.45;margin-top:5px;}}
+.last-updated{{font-size:.6rem;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,.3);margin-top:6px;}}
+.refresh-btn{{margin-top:10px;font-family:'DM Sans',sans-serif;font-size:.65rem;letter-spacing:2px;text-transform:uppercase;font-weight:500;padding:8px 16px;border:2px solid rgba(255,255,255,.3);background:transparent;color:var(--paper);cursor:pointer;transition:all 0.2s;display:inline-flex;align-items:center;gap:6px;}}
+.refresh-btn:hover{{border-color:var(--paper);background:rgba(255,255,255,.08);}}
+.refresh-btn:disabled{{opacity:.4;cursor:not-allowed;}}
+.spin{{display:inline-block;animation:spin 1s linear infinite;}}
+@keyframes spin{{to{{transform:rotate(360deg);}}}}
+.toast{{position:fixed;bottom:24px;right:24px;background:var(--ink);color:var(--paper);padding:14px 20px;font-size:.78rem;border-left:3px solid var(--accent);opacity:0;transform:translateY(10px);transition:all 0.3s;pointer-events:none;z-index:100;max-width:340px;line-height:1.6;}}
+.toast.show{{opacity:1;transform:translateY(0);}}
+.toast.success{{border-color:var(--gold);}}
+.stats-bar{{background:var(--ink);display:flex;padding:16px 40px;border-top:1px solid rgba(255,255,255,.08);flex-wrap:wrap;gap:32px;}}
+.stat{{cursor:pointer;padding:6px 12px;border:2px solid transparent;border-radius:2px;transition:border-color 0.15s,background 0.15s;}}
+.stat:hover{{border-color:rgba(255,255,255,0.2);}}
+.stat.active{{border-color:var(--accent)!important;background:rgba(200,80,42,.15);}}
+.stat.active-gold{{border-color:var(--gold)!important;background:rgba(176,138,32,.15);}}
+.stat strong{{font-family:'Playfair Display',serif;font-size:1.8rem;display:block;line-height:1;color:var(--paper);}}
+.stat span{{font-size:.6rem;letter-spacing:2.5px;text-transform:uppercase;color:rgba(255,255,255,.35);}}
+.stat.red strong{{color:#e07a5a;}}.stat.gold strong{{color:#d4aa50;}}
+.stat-hint{{font-size:.55rem;color:rgba(255,255,255,.2);letter-spacing:1px;display:block;margin-top:3px;font-style:normal;}}
+.filter-bar{{display:none;background:#2a2a3e;padding:10px 40px;align-items:center;gap:12px;border-bottom:2px solid var(--accent);}}
+.filter-bar.visible{{display:flex;}}
+.filter-label{{font-size:.65rem;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.5);}}
+.filter-active{{font-size:.75rem;color:var(--accent);font-weight:500;letter-spacing:1px;}}
+.filter-clear{{font-size:.62rem;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.2);padding:3px 10px;cursor:pointer;margin-left:auto;background:transparent;font-family:'DM Sans',sans-serif;transition:all 0.15s;}}
+.filter-clear:hover{{color:var(--paper);border-color:var(--paper);}}
+.ai-strip{{background:var(--cream);border-bottom:2px solid var(--border);padding:20px 40px;display:flex;gap:20px;align-items:flex-start;}}
+.ai-label{{font-size:.58rem;letter-spacing:3px;text-transform:uppercase;color:var(--gold);font-weight:600;white-space:nowrap;padding-top:3px;flex-shrink:0;}}
+.ai-text{{font-size:.85rem;line-height:1.8;color:var(--ink);font-style:italic;}}
+.ai-priority{{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;font-style:normal;}}
+.priority-chip{{font-size:.62rem;letter-spacing:1px;padding:3px 10px;border:1px solid var(--gold);color:var(--gold);background:rgba(176,138,32,.08);font-weight:500;}}
+.columns{{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;padding:0 40px 60px;}}
+.col{{padding:28px 24px 0;border-right:1px solid var(--border);animation:fadeUp .4s ease both;}}
+.col:first-child{{padding-left:0;}}.col:last-child{{border-right:none;padding-right:0;}}
+@keyframes fadeUp{{from{{opacity:0;transform:translateY(8px);}}to{{opacity:1;transform:translateY(0);}}}}
+.col-head{{font-size:.6rem;letter-spacing:4px;text-transform:uppercase;color:var(--accent);font-weight:600;border-bottom:2px solid var(--ink);padding-bottom:9px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:baseline;}}
+.col-count{{font-size:.75rem;color:var(--muted);letter-spacing:0;font-weight:400;font-family:'Playfair Display',serif;}}
+.task{{border-bottom:1px solid var(--border);padding:11px 0;}}
+.task:last-child{{border-bottom:none;}}
+.task.hidden{{display:none;}}
+a.task-title{{font-size:.83rem;font-weight:500;line-height:1.45;color:var(--ink);display:block;margin-bottom:5px;text-decoration:underline;text-decoration-color:var(--border);text-underline-offset:3px;transition:color 0.15s,text-decoration-color 0.15s;}}
+a.task-title:hover{{color:var(--accent);text-decoration-color:var(--accent);}}
+.open-icon{{font-size:.7rem;color:var(--accent);margin-left:4px;opacity:0.6;}}
+.task-meta{{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}}
+.badge{{font-size:.56rem;letter-spacing:1.5px;text-transform:uppercase;font-weight:600;padding:2px 7px;border:1px solid;display:inline-block;}}
+.badge.overdue{{color:var(--accent);border-color:var(--accent);background:rgba(200,80,42,.07);}}
+.badge.today{{color:var(--gold);border-color:var(--gold);background:rgba(176,138,32,.08);}}
+.badge.upcoming{{color:var(--muted);border-color:var(--border);}}
+.badge.no-date{{color:var(--border);border-color:var(--border);}}
+.list-tag{{font-size:.62rem;color:var(--muted);}}
+.open-link{{font-size:.6rem;letter-spacing:1px;text-transform:uppercase;color:var(--accent);text-decoration:none;font-weight:500;border:1px solid var(--accent);padding:1px 7px;opacity:0.7;transition:opacity 0.15s,background 0.15s;margin-left:auto;}}
+.open-link:hover{{opacity:1;background:rgba(200,80,42,.07);}}
+.task-note{{font-size:.71rem;color:var(--muted);margin-top:5px;line-height:1.5;border-left:2px solid var(--border);padding-left:8px;font-style:italic;}}
+.empty-col{{font-size:.8rem;color:var(--muted);font-style:italic;padding:12px 0;}}
+.no-results{{font-size:.8rem;color:var(--muted);font-style:italic;padding:12px 0;display:none;}}
+.footer{{text-align:center;padding:20px;font-size:.65rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;border-top:1px solid var(--border);}}
+@media(max-width:860px){{
+  .masthead{{padding:20px;}}.stats-bar{{padding:14px 20px;gap:16px;}}
+  .ai-strip{{padding:16px 20px;flex-direction:column;gap:8px;}}
+  .filter-bar{{padding:10px 20px;}}
+  .columns{{grid-template-columns:1fr;padding:0 20px 40px;}}
+  .col{{padding:20px 0 0;border-right:none;border-bottom:1px solid var(--border);padding-bottom:20px;}}
+  .col:last-child{{border-bottom:none;}}
 }}
 </style>
 </head>
@@ -255,27 +250,30 @@ a.task-title:hover{{ color:var(--accent); text-decoration-color:var(--accent); }
     <h1>Daily Briefing</h1>
     <div class="edition">Personal Edition · CBRE Copenhagen</div>
   </div>
-  <div>
+  <div class="masthead-right">
     <div class="date-line">{today_display}</div>
     <div class="sub">Good morning, Joseph</div>
-    <div class="last-updated">Auto-generated at 06:00</div>
+    <div class="last-updated">Generated at {generated_at}</div>
+    <button class="refresh-btn" id="refreshBtn" onclick="triggerRefresh()">
+      <span id="refreshIcon">&#x21BA;</span> Refresh Briefing
+    </button>
   </div>
 </div>
 
 <div class="stats-bar">
-  <div class="stat red" id="stat-overdue" onclick="applyFilter('overdue')" title="Show overdue tasks only">
+  <div class="stat red" id="stat-overdue" onclick="applyFilter('overdue')">
     <strong>{overdue_count}</strong><span>Overdue</span>
     <em class="stat-hint">click to filter</em>
   </div>
-  <div class="stat gold" id="stat-today" onclick="applyFilter('today')" title="Show tasks due today only">
+  <div class="stat gold" id="stat-today" onclick="applyFilter('today')">
     <strong>{today_count}</strong><span>Due Today</span>
     <em class="stat-hint">click to filter</em>
   </div>
-  <div class="stat" id="stat-next" onclick="applyFilter('next')" title="Show Next Actions only">
+  <div class="stat" id="stat-next" onclick="applyFilter('next')">
     <strong>{next_count}</strong><span>Next Actions</span>
     <em class="stat-hint">click to filter</em>
   </div>
-  <div class="stat" id="stat-waiting" onclick="applyFilter('waiting')" title="Show Waiting tasks only">
+  <div class="stat" id="stat-waiting" onclick="applyFilter('waiting')">
     <strong>{waiting_count}</strong><span>Waiting</span>
     <em class="stat-hint">click to filter</em>
   </div>
@@ -287,59 +285,98 @@ a.task-title:hover{{ color:var(--accent); text-decoration-color:var(--accent); }
 <div class="filter-bar" id="filterBar">
   <span class="filter-label">Showing:</span>
   <span class="filter-active" id="filterLabel"></span>
-  <button class="filter-clear" onclick="clearFilter()">✕ Show All</button>
+  <button class="filter-clear" onclick="clearFilter()">&#x2715; Show All</button>
 </div>
 
 <div class="ai-strip">
-  <div class="ai-label">✦ AI<br>Summary</div>
+  <div class="ai-label">&#x2726; AI<br>Summary</div>
   <div>
     <div class="ai-text">{esc(summary)}</div>
     <div class="ai-priority">{chips}</div>
   </div>
 </div>
 
-<div class="columns" id="columns">
-  {render_col('🔴 Priority · Next &amp; Today', col1, today_str, 0.05)}
-  {render_col('📅 This Week', col2, today_str, 0.15)}
-  {render_col('📂 Waiting · Inbox · Meeting Prep', col3, today_str, 0.25)}
+<div class="columns">
+  {render_col('&#x1F534; Priority · Next &amp; Today', col1, today_str, 0.05)}
+  {render_col('&#x1F4C5; This Week', col2, today_str, 0.15)}
+  {render_col('&#x1F4C2; Waiting · Inbox · Meeting Prep', col3, today_str, 0.25)}
 </div>
 
 <div class="footer">Generated by GitHub Actions · {today_display} · {total} open tasks · Click any task to open in Google Tasks</div>
+<div class="toast" id="toast"></div>
 
 <script>
-let activeFilter = null;
+const GITHUB_REPO = "{GITHUB_REPO}";
+const GITHUB_PAT  = "{pat}";
 
+let activeFilter = null;
 const FILTER_LABELS = {{
-  overdue: '🔴 Overdue tasks only',
-  today:   '🟡 Due today only',
+  overdue: '&#x1F534; Overdue tasks only',
+  today:   '&#x1F7E1; Due today only',
   next:    'Next Actions only',
   waiting: 'Waiting tasks only',
 }};
 
+function showToast(msg, type) {{
+  const t = document.getElementById('toast');
+  t.innerHTML = msg;
+  t.className = 'toast show' + (type ? ' ' + type : '');
+  setTimeout(() => t.className = 'toast', 5000);
+}}
+
+async function triggerRefresh() {{
+  const btn  = document.getElementById('refreshBtn');
+  const icon = document.getElementById('refreshIcon');
+  btn.disabled = true;
+  icon.className = 'spin';
+  icon.textContent = '↻';
+  showToast('Triggering refresh — your briefing will be ready in about 60 seconds. Reload the page after that.');
+  try {{
+    const res = await fetch(
+      `https://api.github.com/repos/${{GITHUB_REPO}}/dispatches`,
+      {{
+        method: 'POST',
+        headers: {{
+          'Authorization': `token ${{GITHUB_PAT}}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json',
+        }},
+        body: JSON.stringify({{event_type: 'refresh-briefing'}}),
+      }}
+    );
+    if (res.status === 204) {{
+      showToast('&#x2714; Refresh triggered! Wait ~60 seconds then reload this page.', 'success');
+      setTimeout(() => {{
+        btn.disabled = false;
+        icon.className = '';
+        icon.textContent = '&#x21BA;';
+      }}, 65000);
+    }} else {{
+      throw new Error('GitHub returned status ' + res.status);
+    }}
+  }} catch(e) {{
+    showToast('Could not trigger refresh: ' + e.message);
+    btn.disabled = false;
+    icon.className = '';
+    icon.textContent = '&#x21BA;';
+  }}
+}}
+
 function applyFilter(filter) {{
   if (activeFilter === filter) {{ clearFilter(); return; }}
   activeFilter = filter;
-
-  // Update stat button styles
-  document.querySelectorAll('.stat').forEach(s => {{
-    s.classList.remove('active','active-gold');
-  }});
+  document.querySelectorAll('.stat').forEach(s => s.classList.remove('active','active-gold'));
   const el = document.getElementById('stat-' + filter);
   if (el) el.classList.add(filter === 'today' ? 'active-gold' : 'active');
-
-  // Show filter bar
   document.getElementById('filterBar').classList.add('visible');
-  document.getElementById('filterLabel').textContent = FILTER_LABELS[filter] || filter;
-
-  // Filter tasks
+  document.getElementById('filterLabel').innerHTML = FILTER_LABELS[filter] || filter;
   document.querySelectorAll('.task').forEach(task => {{
-    const status = task.dataset.status;
-    const list   = task.dataset.list;
-    let show = false;
-    if (filter === 'overdue')  show = status === 'overdue';
-    if (filter === 'today')    show = status === 'today';
-    if (filter === 'next')     show = list === 'NEXT';
-    if (filter === 'waiting')  show = list === 'WAITING';
+    const show = (
+      (filter === 'overdue'  && task.dataset.status === 'overdue') ||
+      (filter === 'today'    && task.dataset.status === 'today')   ||
+      (filter === 'next'     && task.dataset.list   === 'NEXT')    ||
+      (filter === 'waiting'  && task.dataset.list   === 'WAITING')
+    );
     task.classList.toggle('hidden', !show);
   }});
 }}
@@ -359,15 +396,21 @@ function clearFilter() {{
 
 if __name__ == "__main__":
     today_str = date.today().isoformat()
-    print(f"Fetching tasks for {today_str}…")
+    pat       = os.environ.get("PAT_REFRESH", "")
+
+    print(f"Fetching tasks for {today_str}...")
     tasks = fetch_all_tasks()
     print(f"  Fetched {len(tasks)} tasks across {len(TASK_LISTS)} lists.")
-    print("Generating AI summary…")
+
+    print("Generating AI summary...")
     summary = generate_summary(tasks)
-    print(f"  Summary: {summary[:80]}…")
+    print(f"  Summary: {summary[:80]}...")
+
     priorities = extract_priorities(tasks, today_str)
-    print("Building HTML…")
-    html = build_html(tasks, summary, priorities, today_str)
+
+    print("Building HTML...")
+    html = build_html(tasks, summary, priorities, today_str, pat)
+
     with open("index.html", "w", encoding="utf-8") as f:
         f.write(html)
     print("Done. index.html written.")
