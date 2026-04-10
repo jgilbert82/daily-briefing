@@ -10,8 +10,6 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 import anthropic
 
-# ── CONFIG ────────────────────────────────────────────────────────────────────
-
 TASK_LISTS = [
     {"id": "R3loUHR2QmRrMlJpMVhaUA",            "name": "NEXT"},
     {"id": "MDkzMjAxNDU3NjI0MDc1NDE3OTM6MDow",  "name": "Inbox"},
@@ -22,8 +20,6 @@ TASK_LISTS = [
 ]
 
 GITHUB_REPO = "jgilbert82/daily-briefing"
-
-# ── GOOGLE TASKS ──────────────────────────────────────────────────────────────
 
 def get_tasks_service():
     creds_data = json.loads(os.environ["GOOGLE_CREDENTIALS_JSON"])
@@ -68,8 +64,6 @@ def fetch_all_tasks():
     return all_tasks
 
 
-# ── AI SUMMARY ────────────────────────────────────────────────────────────────
-
 def generate_summary(tasks):
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
     today  = date.today().isoformat()
@@ -99,8 +93,6 @@ def extract_priorities(tasks, today_str):
     picks   = (overdue + today + nxt)[:5]
     return [f"{i+1} · {t['title'][:55]}{'...' if len(t['title'])>55 else ''}" for i, t in enumerate(picks)]
 
-
-# ── HTML HELPERS ──────────────────────────────────────────────────────────────
 
 def classify_date(due, today_str):
     if not due:          return "no-date"
@@ -143,9 +135,7 @@ def render_col(title, tasks, today_str, delay):
             f'{items}</div>')
 
 
-# ── HTML BUILD ────────────────────────────────────────────────────────────────
-
-def build_html(tasks, summary, priorities, today_str, pat):
+def build_html(tasks, summary, priorities, today_str):
     overdue_count = sum(1 for t in tasks if classify_date(t["due"], today_str) == "overdue")
     today_count   = sum(1 for t in tasks if classify_date(t["due"], today_str) == "today")
     next_count    = sum(1 for t in tasks if t["list"] == "NEXT")
@@ -161,6 +151,7 @@ def build_html(tasks, summary, priorities, today_str, pat):
     chips         = "\n".join(f'<span class="priority-chip">{esc(p)}</span>' for p in priorities)
     today_display = datetime.strptime(today_str, "%Y-%m-%d").strftime("%A %-d %B %Y")
     generated_at  = datetime.utcnow().strftime("%H:%M UTC")
+    actions_url   = f"https://github.com/{GITHUB_REPO}/actions/workflows/daily-briefing.yml"
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -180,14 +171,8 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
 .date-line{{font-family:'Playfair Display',serif;font-size:1rem;opacity:.85;}}
 .sub{{font-size:.68rem;letter-spacing:2px;text-transform:uppercase;opacity:.45;margin-top:5px;}}
 .last-updated{{font-size:.6rem;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,.3);margin-top:6px;}}
-.refresh-btn{{margin-top:10px;font-family:'DM Sans',sans-serif;font-size:.65rem;letter-spacing:2px;text-transform:uppercase;font-weight:500;padding:8px 16px;border:2px solid rgba(255,255,255,.3);background:transparent;color:var(--paper);cursor:pointer;transition:all 0.2s;display:inline-flex;align-items:center;gap:6px;}}
-.refresh-btn:hover{{border-color:var(--paper);background:rgba(255,255,255,.08);}}
-.refresh-btn:disabled{{opacity:.4;cursor:not-allowed;}}
-.spin{{display:inline-block;animation:spin 1s linear infinite;}}
-@keyframes spin{{to{{transform:rotate(360deg);}}}}
-.toast{{position:fixed;bottom:24px;right:24px;background:var(--ink);color:var(--paper);padding:14px 20px;font-size:.78rem;border-left:3px solid var(--accent);opacity:0;transform:translateY(10px);transition:all 0.3s;pointer-events:none;z-index:100;max-width:340px;line-height:1.6;}}
-.toast.show{{opacity:1;transform:translateY(0);}}
-.toast.success{{border-color:var(--gold);}}
+.refresh-btn{{margin-top:10px;font-family:'DM Sans',sans-serif;font-size:.65rem;letter-spacing:2px;text-transform:uppercase;font-weight:500;padding:8px 16px;border:2px solid rgba(255,255,255,.3);background:transparent;color:var(--paper);cursor:pointer;transition:all 0.2s;display:inline-flex;align-items:center;gap:6px;text-decoration:none;}}
+.refresh-btn:hover{{border-color:var(--paper);background:rgba(255,255,255,.08);color:var(--paper);}}
 .stats-bar{{background:var(--ink);display:flex;padding:16px 40px;border-top:1px solid rgba(255,255,255,.08);flex-wrap:wrap;gap:32px;}}
 .stat{{cursor:pointer;padding:6px 12px;border:2px solid transparent;border-radius:2px;transition:border-color 0.15s,background 0.15s;}}
 .stat:hover{{border-color:rgba(255,255,255,0.2);}}
@@ -254,9 +239,9 @@ a.task-title:hover{{color:var(--accent);text-decoration-color:var(--accent);}}
     <div class="date-line">{today_display}</div>
     <div class="sub">Good morning, Joseph</div>
     <div class="last-updated">Generated at {generated_at}</div>
-    <button class="refresh-btn" id="refreshBtn" onclick="triggerRefresh()">
-      <span id="refreshIcon">&#x21BA;</span> Refresh Briefing
-    </button>
+    <a class="refresh-btn" href="{actions_url}" target="_blank" rel="noopener">
+      &#x21BA; Refresh Briefing
+    </a>
   </div>
 </div>
 
@@ -303,12 +288,8 @@ a.task-title:hover{{color:var(--accent);text-decoration-color:var(--accent);}}
 </div>
 
 <div class="footer">Generated by GitHub Actions · {today_display} · {total} open tasks · Click any task to open in Google Tasks</div>
-<div class="toast" id="toast"></div>
 
 <script>
-const GITHUB_REPO = "{GITHUB_REPO}";
-const GITHUB_PAT  = "{pat}";
-
 let activeFilter = null;
 const FILTER_LABELS = {{
   overdue: '&#x1F534; Overdue tasks only',
@@ -316,51 +297,6 @@ const FILTER_LABELS = {{
   next:    'Next Actions only',
   waiting: 'Waiting tasks only',
 }};
-
-function showToast(msg, type) {{
-  const t = document.getElementById('toast');
-  t.innerHTML = msg;
-  t.className = 'toast show' + (type ? ' ' + type : '');
-  setTimeout(() => t.className = 'toast', 5000);
-}}
-
-async function triggerRefresh() {{
-  const btn  = document.getElementById('refreshBtn');
-  const icon = document.getElementById('refreshIcon');
-  btn.disabled = true;
-  icon.className = 'spin';
-  icon.textContent = '↻';
-  showToast('Triggering refresh — your briefing will be ready in about 60 seconds. Reload the page after that.');
-  try {{
-    const res = await fetch(
-      `https://api.github.com/repos/${{GITHUB_REPO}}/dispatches`,
-      {{
-        method: 'POST',
-        headers: {{
-          'Authorization': `token ${{GITHUB_PAT}}`,
-          'Accept': 'application/vnd.github.v3+json',
-          'Content-Type': 'application/json',
-        }},
-        body: JSON.stringify({{event_type: 'refresh-briefing'}}),
-      }}
-    );
-    if (res.status === 204) {{
-      showToast('&#x2714; Refresh triggered! Wait ~60 seconds then reload this page.', 'success');
-      setTimeout(() => {{
-        btn.disabled = false;
-        icon.className = '';
-        icon.textContent = '&#x21BA;';
-      }}, 65000);
-    }} else {{
-      throw new Error('GitHub returned status ' + res.status);
-    }}
-  }} catch(e) {{
-    showToast('Could not trigger refresh: ' + e.message);
-    btn.disabled = false;
-    icon.className = '';
-    icon.textContent = '&#x21BA;';
-  }}
-}}
 
 function applyFilter(filter) {{
   if (activeFilter === filter) {{ clearFilter(); return; }}
@@ -392,25 +328,17 @@ function clearFilter() {{
 </html>"""
 
 
-# ── MAIN ──────────────────────────────────────────────────────────────────────
-
 if __name__ == "__main__":
     today_str = date.today().isoformat()
-    pat       = os.environ.get("PAT_REFRESH", "")
-
     print(f"Fetching tasks for {today_str}...")
     tasks = fetch_all_tasks()
     print(f"  Fetched {len(tasks)} tasks across {len(TASK_LISTS)} lists.")
-
     print("Generating AI summary...")
     summary = generate_summary(tasks)
     print(f"  Summary: {summary[:80]}...")
-
     priorities = extract_priorities(tasks, today_str)
-
     print("Building HTML...")
-    html = build_html(tasks, summary, priorities, today_str, pat)
-
+    html = build_html(tasks, summary, priorities, today_str)
     with open("index.html", "w", encoding="utf-8") as f:
         f.write(html)
     print("Done. index.html written.")
