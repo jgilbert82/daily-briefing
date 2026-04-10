@@ -52,22 +52,14 @@ def fetch_all_tasks():
                     continue
                 due_raw = t.get("due")
                 due_str = due_raw[:10] if due_raw else None
-
-                # Build a direct Google Tasks web link
                 task_id = t.get("id", "")
-                list_id = lst["id"]
-                # selfLink format from the API
-                web_link = t.get("webViewLink") or \
-                    f"https://tasks.google.com/tasks/search?q={task_id}"
-
+                web_link = f"https://tasks.google.com/task/{task_id}?sa=6"
                 all_tasks.append({
                     "title": t.get("title", "").strip(),
                     "list":  lst["name"],
                     "due":   due_str,
                     "note":  (t.get("notes") or "").strip()[:200] or None,
                     "link":  web_link,
-                    "task_id": task_id,
-                    "list_id": list_id,
                 })
         except Exception as e:
             print(f"Warning: could not fetch {lst['name']}: {e}")
@@ -113,52 +105,36 @@ def extract_priorities(tasks, today_str):
 # ── HTML HELPERS ──────────────────────────────────────────────────────────────
 
 def classify_date(due, today_str):
-    if not due:       return "no-date"
-    if due < today_str: return "overdue"
+    if not due:          return "no-date"
+    if due < today_str:  return "overdue"
     if due == today_str: return "today"
     return "upcoming"
-
 
 def fmt_date(due):
     return datetime.strptime(due, "%Y-%m-%d").strftime("%-d %b")
 
-
 def badge_label(cls, due):
-    if cls == "overdue":   return "Overdue"
-    if cls == "today":     return "Today"
-    if cls == "upcoming":  return fmt_date(due)
+    if cls == "overdue":  return "Overdue"
+    if cls == "today":    return "Today"
+    if cls == "upcoming": return fmt_date(due)
     return "—"
-
 
 def esc(s):
     return (s or "").replace("&","&amp;").replace("<","&lt;").replace(">","&gt;").replace('"',"&quot;")
 
-
-def make_task_url(task_id, list_id):
-    """
-    Construct the Google Tasks web app deep link.
-    Format: https://tasks.google.com/tasks/search opens search,
-    but the direct task URL uses the tasks.google.com UI format.
-    """
-    return f"https://tasks.google.com/task/{task_id}?sa=6"
-
-
 def render_task(t, today_str):
-    cls   = classify_date(t["due"], today_str)
-    note  = f'<div class="task-note">{esc((t["note"] or "")[:120])}{"…" if t["note"] and len(t["note"]) > 120 else ""}</div>' if t["note"] else ""
-
-    # Build the link - use webViewLink if available, otherwise construct it
-    task_url = t.get("link") or make_task_url(t.get("task_id",""), t.get("list_id",""))
-
+    cls  = classify_date(t["due"], today_str)
+    note = f'<div class="task-note">{esc((t["note"] or "")[:120])}{"…" if t["note"] and len(t["note"]) > 120 else ""}</div>' if t["note"] else ""
+    link = esc(t.get("link", "#"))
     return f"""<div class="task">
-  <a class="task-title" href="{esc(task_url)}" target="_blank" rel="noopener">{esc(t['title'])} <span class="task-link-icon">↗</span></a>
+  <a class="task-title" href="{link}" target="_blank" rel="noopener">{esc(t['title'])}<span class="open-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge {cls}">{badge_label(cls, t['due'])}</span>
     <span class="list-tag">{esc(t['list'])}</span>
+    <a class="open-link" href="{link}" target="_blank" rel="noopener">Open in Tasks ↗</a>
   </div>
   {note}
 </div>"""
-
 
 def render_col(title, tasks, today_str, delay):
     items = "\n".join(render_task(t, today_str) for t in tasks) if tasks else \
@@ -224,10 +200,14 @@ body {{ font-family: 'DM Sans', sans-serif; background: var(--paper); color: var
 .col-count {{ font-size: .75rem; color: var(--muted); letter-spacing: 0; font-weight: 400; font-family: 'Playfair Display', serif; }}
 .task {{ border-bottom: 1px solid var(--border); padding: 11px 0; }}
 .task:last-child {{ border-bottom: none; }}
-a.task-title {{ font-size: .83rem; font-weight: 500; line-height: 1.45; color: var(--ink); margin-bottom: 5px; display: block; text-decoration: none; transition: color 0.15s; }}
-a.task-title:hover {{ color: var(--accent); }}
-a.task-title:hover .task-link-icon {{ opacity: 1; }}
-.task-link-icon {{ font-size: .7rem; opacity: 0; color: var(--accent); transition: opacity 0.15s; margin-left: 3px; }}
+a.task-title {{
+  font-size: .83rem; font-weight: 500; line-height: 1.45;
+  color: var(--ink); display: block; margin-bottom: 5px;
+  text-decoration: underline; text-decoration-color: var(--border);
+  text-underline-offset: 3px; transition: color 0.15s, text-decoration-color 0.15s;
+}}
+a.task-title:hover {{ color: var(--accent); text-decoration-color: var(--accent); }}
+.open-icon {{ font-size: .7rem; color: var(--accent); margin-left: 4px; opacity: 0.6; }}
 .task-meta {{ display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }}
 .badge {{ font-size: .56rem; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 600; padding: 2px 7px; border: 1px solid; display: inline-block; }}
 .badge.overdue {{ color: var(--accent); border-color: var(--accent); background: rgba(200,80,42,.07); }}
@@ -235,6 +215,14 @@ a.task-title:hover .task-link-icon {{ opacity: 1; }}
 .badge.upcoming {{ color: var(--muted); border-color: var(--border); }}
 .badge.no-date {{ color: var(--border); border-color: var(--border); }}
 .list-tag {{ font-size: .62rem; color: var(--muted); }}
+.open-link {{
+  font-size: .6rem; letter-spacing: 1px; text-transform: uppercase;
+  color: var(--accent); text-decoration: none; font-weight: 500;
+  border: 1px solid var(--accent); padding: 1px 7px;
+  opacity: 0.7; transition: opacity 0.15s, background 0.15s;
+  margin-left: auto;
+}}
+.open-link:hover {{ opacity: 1; background: rgba(200,80,42,.07); }}
 .task-note {{ font-size: .71rem; color: var(--muted); margin-top: 5px; line-height: 1.5; border-left: 2px solid var(--border); padding-left: 8px; font-style: italic; }}
 .footer {{ text-align: center; padding: 20px; font-size: .65rem; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; border-top: 1px solid var(--border); }}
 @media (max-width: 860px) {{
@@ -277,7 +265,7 @@ a.task-title:hover .task-link-icon {{ opacity: 1; }}
   {render_col('📅 This Week', col2_tasks, today_str, 0.15)}
   {render_col('📂 Waiting · Inbox · Meeting Prep', col3_tasks, today_str, 0.25)}
 </div>
-<div class="footer">Generated by GitHub Actions · {today_display} · {total} open tasks · Click any task to open in Google Tasks</div>
+<div class="footer">Generated by GitHub Actions · {today_display} · {total} open tasks</div>
 </body>
 </html>"""
 
