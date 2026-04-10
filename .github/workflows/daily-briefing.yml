@@ -2,10 +2,11 @@ name: Daily Briefing
 
 on:
   schedule:
-    # Runs at 06:00 Copenhagen time (05:00 UTC in winter, 04:00 UTC in summer)
-    # Set to 05:00 UTC to cover both — adjust if needed
+    # 05:00 UTC = 06:00 Copenhagen (winter) / 07:00 (summer)
     - cron: '0 5 * * 1-5'
-  workflow_dispatch: # Allow manual trigger from GitHub UI
+  workflow_dispatch:
+  repository_dispatch:
+    types: [refresh-briefing]
 
 jobs:
   build:
@@ -27,6 +28,7 @@ jobs:
         env:
           GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PAT_REFRESH: ${{ secrets.PAT_REFRESH }}
         run: python generate.py
 
       - name: Commit and push updated index.html
@@ -34,5 +36,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add index.html
-          git diff --staged --quiet || git commit -m "Daily briefing $(date +'%Y-%m-%d')"
+          git diff --staged --quiet || git commit -m "Daily briefing $(date +'%Y-%m-%d %H:%M')"
           git push
