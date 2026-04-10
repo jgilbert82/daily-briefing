@@ -6,85 +6,70 @@
 <title>Daily Briefing · Friday 10 April 2026</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-:root {
-  --ink:#1a1a2e; --paper:#f5f0e8; --cream:#ede8dc;
-  --accent:#c8502a; --gold:#b08a20; --muted:#7a7468; --border:#d4cfc5;
-}
-*{ box-sizing:border-box; margin:0; padding:0; }
-body{ font-family:'DM Sans',sans-serif; background:var(--paper); color:var(--ink); min-height:100vh; }
-.masthead{ background:var(--ink); color:var(--paper); padding:28px 40px 22px; display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:12px; border-bottom:4px solid var(--accent); }
-.masthead h1{ font-family:'Playfair Display',serif; font-size:2.6rem; letter-spacing:-0.5px; line-height:1; }
-.edition{ font-size:.7rem; letter-spacing:3px; text-transform:uppercase; color:var(--accent); margin-top:7px; font-weight:500; }
-.date-line{ font-family:'Playfair Display',serif; font-size:1rem; opacity:.85; text-align:right; }
-.sub{ font-size:.68rem; letter-spacing:2px; text-transform:uppercase; opacity:.45; margin-top:5px; text-align:right; }
-.last-updated{ font-size:.6rem; letter-spacing:1px; text-transform:uppercase; color:rgba(255,255,255,.3); margin-top:6px; text-align:right; }
-
-/* STATS BAR */
-.stats-bar{ background:var(--ink); display:flex; padding:16px 40px; border-top:1px solid rgba(255,255,255,.08); flex-wrap:wrap; gap:32px; }
-.stat{ cursor:pointer; padding:6px 12px; border:2px solid transparent; border-radius:2px; transition:border-color 0.15s, background 0.15s; }
-.stat:hover{ border-color:rgba(255,255,255,0.2); }
-.stat.active{ border-color:var(--accent) !important; background:rgba(200,80,42,0.15); }
-.stat.active-gold{ border-color:var(--gold) !important; background:rgba(176,138,32,0.15); }
-.stat strong{ font-family:'Playfair Display',serif; font-size:1.8rem; display:block; line-height:1; color:var(--paper); }
-.stat span{ font-size:.6rem; letter-spacing:2.5px; text-transform:uppercase; color:rgba(255,255,255,.35); }
-.stat.red strong{ color:#e07a5a; }
-.stat.gold strong{ color:#d4aa50; }
-.stat-hint{ font-size:.58rem; color:rgba(255,255,255,.2); letter-spacing:1px; display:block; margin-top:3px; }
-
-/* FILTER BAR */
-.filter-bar{ display:none; background:#2a2a3e; padding:10px 40px; align-items:center; gap:12px; border-bottom:2px solid var(--accent); }
-.filter-bar.visible{ display:flex; }
-.filter-label{ font-size:.65rem; letter-spacing:2px; text-transform:uppercase; color:rgba(255,255,255,.5); }
-.filter-active{ font-size:.75rem; color:var(--accent); font-weight:500; letter-spacing:1px; }
-.filter-clear{ font-size:.62rem; letter-spacing:1.5px; text-transform:uppercase; color:rgba(255,255,255,.4); border:1px solid rgba(255,255,255,.2); padding:3px 10px; cursor:pointer; margin-left:auto; background:transparent; font-family:'DM Sans',sans-serif; transition:all 0.15s; }
-.filter-clear:hover{ color:var(--paper); border-color:var(--paper); }
-
-/* AI STRIP */
-.ai-strip{ background:var(--cream); border-bottom:2px solid var(--border); padding:20px 40px; display:flex; gap:20px; align-items:flex-start; }
-.ai-label{ font-size:.58rem; letter-spacing:3px; text-transform:uppercase; color:var(--gold); font-weight:600; white-space:nowrap; padding-top:3px; flex-shrink:0; }
-.ai-text{ font-size:.85rem; line-height:1.8; color:var(--ink); font-style:italic; }
-.ai-priority{ margin-top:10px; display:flex; gap:8px; flex-wrap:wrap; font-style:normal; }
-.priority-chip{ font-size:.62rem; letter-spacing:1px; padding:3px 10px; border:1px solid var(--gold); color:var(--gold); background:rgba(176,138,32,.08); font-weight:500; }
-
-/* COLUMNS */
-.columns{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:0; padding:0 40px 60px; }
-.col{ padding:28px 24px 0; border-right:1px solid var(--border); animation:fadeUp .4s ease both; }
-.col:first-child{ padding-left:0; }
-.col:last-child{ border-right:none; padding-right:0; }
-@keyframes fadeUp{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:translateY(0); } }
-.col-head{ font-size:.6rem; letter-spacing:4px; text-transform:uppercase; color:var(--accent); font-weight:600; border-bottom:2px solid var(--ink); padding-bottom:9px; margin-bottom:18px; display:flex; justify-content:space-between; align-items:baseline; }
-.col-count{ font-size:.75rem; color:var(--muted); letter-spacing:0; font-weight:400; font-family:'Playfair Display',serif; }
-
-/* TASKS */
-.task{ border-bottom:1px solid var(--border); padding:11px 0; transition:opacity 0.2s; }
-.task:last-child{ border-bottom:none; }
-.task.hidden{ display:none; }
-a.task-title{ font-size:.83rem; font-weight:500; line-height:1.45; color:var(--ink); display:block; margin-bottom:5px; text-decoration:underline; text-decoration-color:var(--border); text-underline-offset:3px; transition:color 0.15s, text-decoration-color 0.15s; }
-a.task-title:hover{ color:var(--accent); text-decoration-color:var(--accent); }
-.open-icon{ font-size:.7rem; color:var(--accent); margin-left:4px; opacity:0.6; }
-.task-meta{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-.badge{ font-size:.56rem; letter-spacing:1.5px; text-transform:uppercase; font-weight:600; padding:2px 7px; border:1px solid; display:inline-block; }
-.badge.overdue{ color:var(--accent); border-color:var(--accent); background:rgba(200,80,42,.07); }
-.badge.today{ color:var(--gold); border-color:var(--gold); background:rgba(176,138,32,.08); }
-.badge.upcoming{ color:var(--muted); border-color:var(--border); }
-.badge.no-date{ color:var(--border); border-color:var(--border); }
-.list-tag{ font-size:.62rem; color:var(--muted); }
-.open-link{ font-size:.6rem; letter-spacing:1px; text-transform:uppercase; color:var(--accent); text-decoration:none; font-weight:500; border:1px solid var(--accent); padding:1px 7px; opacity:0.7; transition:opacity 0.15s, background 0.15s; margin-left:auto; }
-.open-link:hover{ opacity:1; background:rgba(200,80,42,.07); }
-.task-note{ font-size:.71rem; color:var(--muted); margin-top:5px; line-height:1.5; border-left:2px solid var(--border); padding-left:8px; font-style:italic; }
-.empty-col{ font-size:.8rem; color:var(--muted); font-style:italic; padding:12px 0; }
-.no-results{ font-size:.8rem; color:var(--muted); font-style:italic; padding:16px 0; display:none; }
-.col.has-filter .no-results{ display:block; }
-
-.footer{ text-align:center; padding:20px; font-size:.65rem; color:var(--muted); letter-spacing:1px; text-transform:uppercase; border-top:1px solid var(--border); }
-
-@media (max-width:860px){
-  .masthead{ padding:20px; } .stats-bar{ padding:14px 20px; gap:16px; }
-  .ai-strip{ padding:16px 20px; flex-direction:column; gap:8px; }
-  .filter-bar{ padding:10px 20px; }
-  .columns{ grid-template-columns:1fr; padding:0 20px 40px; }
-  .col{ padding:20px 0 0; border-right:none; border-bottom:1px solid var(--border); padding-bottom:20px; }
-  .col:last-child{ border-bottom:none; }
+:root{--ink:#1a1a2e;--paper:#f5f0e8;--cream:#ede8dc;--accent:#c8502a;--gold:#b08a20;--muted:#7a7468;--border:#d4cfc5;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);min-height:100vh;}
+.masthead{background:var(--ink);color:var(--paper);padding:28px 40px 22px;display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:12px;border-bottom:4px solid var(--accent);}
+.masthead h1{font-family:'Playfair Display',serif;font-size:2.6rem;letter-spacing:-0.5px;line-height:1;}
+.edition{font-size:.7rem;letter-spacing:3px;text-transform:uppercase;color:var(--accent);margin-top:7px;font-weight:500;}
+.masthead-right{text-align:right;}
+.date-line{font-family:'Playfair Display',serif;font-size:1rem;opacity:.85;}
+.sub{font-size:.68rem;letter-spacing:2px;text-transform:uppercase;opacity:.45;margin-top:5px;}
+.last-updated{font-size:.6rem;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,.3);margin-top:6px;}
+.refresh-btn{margin-top:10px;font-family:'DM Sans',sans-serif;font-size:.65rem;letter-spacing:2px;text-transform:uppercase;font-weight:500;padding:8px 16px;border:2px solid rgba(255,255,255,.3);background:transparent;color:var(--paper);cursor:pointer;transition:all 0.2s;display:inline-flex;align-items:center;gap:6px;text-decoration:none;}
+.refresh-btn:hover{border-color:var(--paper);background:rgba(255,255,255,.08);color:var(--paper);}
+.stats-bar{background:var(--ink);display:flex;padding:16px 40px;border-top:1px solid rgba(255,255,255,.08);flex-wrap:wrap;gap:32px;}
+.stat{cursor:pointer;padding:6px 12px;border:2px solid transparent;border-radius:2px;transition:border-color 0.15s,background 0.15s;}
+.stat:hover{border-color:rgba(255,255,255,0.2);}
+.stat.active{border-color:var(--accent)!important;background:rgba(200,80,42,.15);}
+.stat.active-gold{border-color:var(--gold)!important;background:rgba(176,138,32,.15);}
+.stat strong{font-family:'Playfair Display',serif;font-size:1.8rem;display:block;line-height:1;color:var(--paper);}
+.stat span{font-size:.6rem;letter-spacing:2.5px;text-transform:uppercase;color:rgba(255,255,255,.35);}
+.stat.red strong{color:#e07a5a;}.stat.gold strong{color:#d4aa50;}
+.stat-hint{font-size:.55rem;color:rgba(255,255,255,.2);letter-spacing:1px;display:block;margin-top:3px;font-style:normal;}
+.filter-bar{display:none;background:#2a2a3e;padding:10px 40px;align-items:center;gap:12px;border-bottom:2px solid var(--accent);}
+.filter-bar.visible{display:flex;}
+.filter-label{font-size:.65rem;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.5);}
+.filter-active{font-size:.75rem;color:var(--accent);font-weight:500;letter-spacing:1px;}
+.filter-clear{font-size:.62rem;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.2);padding:3px 10px;cursor:pointer;margin-left:auto;background:transparent;font-family:'DM Sans',sans-serif;transition:all 0.15s;}
+.filter-clear:hover{color:var(--paper);border-color:var(--paper);}
+.ai-strip{background:var(--cream);border-bottom:2px solid var(--border);padding:20px 40px;display:flex;gap:20px;align-items:flex-start;}
+.ai-label{font-size:.58rem;letter-spacing:3px;text-transform:uppercase;color:var(--gold);font-weight:600;white-space:nowrap;padding-top:3px;flex-shrink:0;}
+.ai-text{font-size:.85rem;line-height:1.8;color:var(--ink);font-style:italic;}
+.ai-priority{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;font-style:normal;}
+.priority-chip{font-size:.62rem;letter-spacing:1px;padding:3px 10px;border:1px solid var(--gold);color:var(--gold);background:rgba(176,138,32,.08);font-weight:500;}
+.columns{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;padding:0 40px 60px;}
+.col{padding:28px 24px 0;border-right:1px solid var(--border);animation:fadeUp .4s ease both;}
+.col:first-child{padding-left:0;}.col:last-child{border-right:none;padding-right:0;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+.col-head{font-size:.6rem;letter-spacing:4px;text-transform:uppercase;color:var(--accent);font-weight:600;border-bottom:2px solid var(--ink);padding-bottom:9px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:baseline;}
+.col-count{font-size:.75rem;color:var(--muted);letter-spacing:0;font-weight:400;font-family:'Playfair Display',serif;}
+.task{border-bottom:1px solid var(--border);padding:11px 0;}
+.task:last-child{border-bottom:none;}
+.task.hidden{display:none;}
+a.task-title{font-size:.83rem;font-weight:500;line-height:1.45;color:var(--ink);display:block;margin-bottom:5px;text-decoration:underline;text-decoration-color:var(--border);text-underline-offset:3px;transition:color 0.15s,text-decoration-color 0.15s;}
+a.task-title:hover{color:var(--accent);text-decoration-color:var(--accent);}
+.open-icon{font-size:.7rem;color:var(--accent);margin-left:4px;opacity:0.6;}
+.task-meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.badge{font-size:.56rem;letter-spacing:1.5px;text-transform:uppercase;font-weight:600;padding:2px 7px;border:1px solid;display:inline-block;}
+.badge.overdue{color:var(--accent);border-color:var(--accent);background:rgba(200,80,42,.07);}
+.badge.today{color:var(--gold);border-color:var(--gold);background:rgba(176,138,32,.08);}
+.badge.upcoming{color:var(--muted);border-color:var(--border);}
+.badge.no-date{color:var(--border);border-color:var(--border);}
+.list-tag{font-size:.62rem;color:var(--muted);}
+.open-link{font-size:.6rem;letter-spacing:1px;text-transform:uppercase;color:var(--accent);text-decoration:none;font-weight:500;border:1px solid var(--accent);padding:1px 7px;opacity:0.7;transition:opacity 0.15s,background 0.15s;margin-left:auto;}
+.open-link:hover{opacity:1;background:rgba(200,80,42,.07);}
+.task-note{font-size:.71rem;color:var(--muted);margin-top:5px;line-height:1.5;border-left:2px solid var(--border);padding-left:8px;font-style:italic;}
+.empty-col{font-size:.8rem;color:var(--muted);font-style:italic;padding:12px 0;}
+.no-results{font-size:.8rem;color:var(--muted);font-style:italic;padding:12px 0;display:none;}
+.footer{text-align:center;padding:20px;font-size:.65rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;border-top:1px solid var(--border);}
+@media(max-width:860px){
+  .masthead{padding:20px;}.stats-bar{padding:14px 20px;gap:16px;}
+  .ai-strip{padding:16px 20px;flex-direction:column;gap:8px;}
+  .filter-bar{padding:10px 20px;}
+  .columns{grid-template-columns:1fr;padding:0 20px 40px;}
+  .col{padding:20px 0 0;border-right:none;border-bottom:1px solid var(--border);padding-bottom:20px;}
+  .col:last-child{border-bottom:none;}
 }
 </style>
 </head>
@@ -95,83 +80,74 @@ a.task-title:hover{ color:var(--accent); text-decoration-color:var(--accent); }
     <h1>Daily Briefing</h1>
     <div class="edition">Personal Edition · CBRE Copenhagen</div>
   </div>
-  <div>
+  <div class="masthead-right">
     <div class="date-line">Friday 10 April 2026</div>
     <div class="sub">Good morning, Joseph</div>
-    <div class="last-updated">Auto-generated at 06:00</div>
+    <div class="last-updated">Generated at 13:52 UTC</div>
+    <a class="refresh-btn" href="https://github.com/jgilbert82/daily-briefing/actions/workflows/daily-briefing.yml" target="_blank" rel="noopener">
+      &#x21BA; Refresh Briefing
+    </a>
   </div>
 </div>
 
 <div class="stats-bar">
-  <div class="stat red" id="stat-overdue" onclick="applyFilter('overdue')" title="Show overdue tasks only">
-    <strong>24</strong><span>Overdue</span>
+  <div class="stat red" id="stat-overdue" onclick="applyFilter('overdue')">
+    <strong>13</strong><span>Overdue</span>
     <em class="stat-hint">click to filter</em>
   </div>
-  <div class="stat gold" id="stat-today" onclick="applyFilter('today')" title="Show tasks due today only">
-    <strong>3</strong><span>Due Today</span>
+  <div class="stat gold" id="stat-today" onclick="applyFilter('today')">
+    <strong>4</strong><span>Due Today</span>
     <em class="stat-hint">click to filter</em>
   </div>
-  <div class="stat" id="stat-next" onclick="applyFilter('next')" title="Show Next Actions only">
-    <strong>9</strong><span>Next Actions</span>
+  <div class="stat" id="stat-next" onclick="applyFilter('next')">
+    <strong>5</strong><span>Next Actions</span>
     <em class="stat-hint">click to filter</em>
   </div>
-  <div class="stat" id="stat-waiting" onclick="applyFilter('waiting')" title="Show Waiting tasks only">
-    <strong>8</strong><span>Waiting</span>
+  <div class="stat" id="stat-waiting" onclick="applyFilter('waiting')">
+    <strong>7</strong><span>Waiting</span>
     <em class="stat-hint">click to filter</em>
   </div>
   <div class="stat" id="stat-all">
-    <strong>44</strong><span>Total Open</span>
+    <strong>43</strong><span>Total Open</span>
   </div>
 </div>
 
 <div class="filter-bar" id="filterBar">
   <span class="filter-label">Showing:</span>
   <span class="filter-active" id="filterLabel"></span>
-  <button class="filter-clear" onclick="clearFilter()">✕ Show All</button>
+  <button class="filter-clear" onclick="clearFilter()">&#x2715; Show All</button>
 </div>
 
 <div class="ai-strip">
-  <div class="ai-label">✦ AI<br>Summary</div>
+  <div class="ai-label">&#x2726; AI<br>Summary</div>
   <div>
-    <div class="ai-text">Good morning, Joseph. You have two items due today—the follow-up email to Isabella at Vestas and reviewing the FMD lease agreement regarding the heat pump—so those should be your first priorities this morning. More pressing, however, is the overdue inbox item from Lars Brondt on Danish Property Valuations from 8 April, which needs a response before it slips further. You also have a significant backlog of overdue items stretching back to October 2025 and late March 2026, including the service charge reconciliation that was due end of March and several WAITING items that may need a nudge. I'd suggest blocking thirty minutes this afternoon to triage those overdue WAITING items and send quick chase emails where needed—clearing even a few will reduce the drag on your week.</div>
-    <div class="ai-priority"><span class="priority-chip">1 · Inbox : RE: New Danish Property Valuations - from our m…</span>
+    <div class="ai-text">Good morning, Joseph. You have several significantly overdue items requiring immediate attention: the K24L invoicing matter from Johannes is now six months past due, and Weiqi Zhang's invoice query has been waiting over two weeks. Today specifically, you must respond to Jean-Paul's Tenant Meeting Watchlist, Carl Nikolaj's Yardi Innovation request, Søren's water consumption query, and put together the Sydmarken invoice for EWA—all due today. The EQT Tenancy Schedule was due yesterday and should also be addressed urgently. I'd suggest starting with the items due today and then tackling the oldest overdue invoicing issues with Johannes, as these carry reputational and financial risk the longer they remain unresolved.</div>
+    <div class="ai-priority"><span class="priority-chip">1 · Inbox : Re: Faktura/Invoice (202600000070) from Weiqi Z...</span>
 <span class="priority-chip">2 · Inbox : Re: K24L - Invoicing to ASR from KUNZ Johannes</span>
-<span class="priority-chip">3 · Finalise service charge reconciliation 2025 before end …</span>
-<span class="priority-chip">4 · Inbox : RE: Offboarding - Kornmarksvej 15 from Gancza-S…</span>
-<span class="priority-chip">5 · Inbox : Re: Sydmarken Asset Electricity Meter Mapping f…</span></div>
+<span class="priority-chip">3 · Inbox : RE: Offboarding - Kornmarksvej 15 from Gancza-S...</span>
+<span class="priority-chip">4 · Inbox : Re: Sydmarken Asset Electricity Meter Mapping f...</span>
+<span class="priority-chip">5 · Inbox : FW: GRESB data collection EUROCORE from VEDDER ...</span></div>
   </div>
 </div>
 
-<div class="columns" id="columns">
-  <div class="col" style="animation-delay:0.05s"><div class="col-head">🔴 Priority · Next &amp; Today<span class="col-count">32</span></div><div class="task" data-status="today" data-list="NEXT"><a class="task-title" href="https://tasks.google.com/task/eTAwYXViQkp6dzA2bnZVcg?sa=6" target="_blank" rel="noopener">Sending follow up email to Isabella at Vestas<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge today">Today</span><span class="list-tag">NEXT</span><a class="open-link" href="https://tasks.google.com/task/eTAwYXViQkp6dzA2bnZVcg?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div></div>
-<div class="task" data-status="today" data-list="NEXT"><a class="task-title" href="https://tasks.google.com/task/VXQ4SnJFRXVoUzBERGlxQg?sa=6" target="_blank" rel="noopener">Check fmd lease agreement with regard to the heat pump<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge today">Today</span><span class="list-tag">NEXT</span><a class="open-link" href="https://tasks.google.com/task/VXQ4SnJFRXVoUzBERGlxQg?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div></div>
-<div class="task" data-status="overdue" data-list="NEXT"><a class="task-title" href="https://tasks.google.com/task/ZjdyTDl5NFl6ZF94aXYxSQ?sa=6" target="_blank" rel="noopener">Inbox : RE: New Danish Property Valuations - from our meeting from Brondt, Lars @ Copenhagen<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge overdue">Overdue</span><span class="list-tag">NEXT</span><a class="open-link" href="https://tasks.google.com/task/ZjdyTDl5NFl6ZF94aXYxSQ?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div><div class="task-note">http://plxy.co/jzSrlibO3QGt
-&lt;-- see full text in source --&gt; 
-
- Hej all,
-
-
-
-I have updated the KAMs and Contact list, whi…</div></div>
-<div class="task" data-status="no-date" data-list="NEXT"><a class="task-title" href="https://tasks.google.com/task/LTlvbTRkYnlabXRUVWtjYw?sa=6" target="_blank" rel="noopener">Inbox : Ferrosan - Open issues  from HERMETZ Jean-Paul<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge no-date">—</span><span class="list-tag">NEXT</span><a class="open-link" href="https://tasks.google.com/task/LTlvbTRkYnlabXRUVWtjYw?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div><div class="task-note">http://plxy.co/tDal5pabYN9I
+<div class="columns">
+  <div class="col" style="animation-delay:0.05s"><div class="col-head">&#x1F534; Priority · Next &amp; Today<span class="col-count">20</span></div><div class="no-results">No tasks match this filter.</div><div class="task" data-status="overdue" data-list="NEXT"><a class="task-title" href="https://tasks.google.com/task/TldaeUFSSzlXenYtMC1EeQ?sa=6" target="_blank" rel="noopener">Inbox : Re: Faktura/Invoice (202600000070) from Weiqi Zhang<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge overdue">Overdue</span><span class="list-tag">NEXT</span><a class="open-link" href="https://tasks.google.com/task/TldaeUFSSzlXenYtMC1EeQ?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div><div class="task-note">http://plxy.co/sAtAgKoXG3Go
 External
 
 
 
-Dear property team, 
-
-Please find attached the latest memo sent to Ferrosan on 2…</div></div>
-<div class="task" data-status="no-date" data-list="NEXT"><a class="task-title" href="https://tasks.google.com/task/MnoxaUZUbFEyS2RLOHk0Tg?sa=6" target="_blank" rel="noopener">Day Book 1st October : Property Tax-re-valuations. Crm: - [High] Update (KAMs) the Excel property overview with correct fund manager contact info and additional relevant client contacts [suggested: 20<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge no-date">—</span><span class="list-tag">NEXT</span><a class="open-link" href="https://tasks.google.com/task/MnoxaUZUbFEyS2RLOHk0Tg?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div><div class="task-note">http://plxy.co/Fdxq3QnIRTxG</div></div>
-<div class="task" data-status="upcoming" data-list="NEXT"><a class="task-title" href="https://tasks.google.com/task/eTdGTks4U3BxcGFrRWdxUw?sa=6" target="_blank" rel="noopener">Day Book 1st October : 3:55 PM - [High] Schedule a follow-up meeting with Johannes for to review technical management quality, invoicing process, and overall cooperation (Jane / Joseph) [suggested: 20<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge upcoming">1 May</span><span class="list-tag">NEXT</span><a class="open-link" href="https://tasks.google.com/task/eTdGTks4U3BxcGFrRWdxUw?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div><div class="task-note">http://plxy.co/POmwKJCu6RnD</div></div>
-<div class="task" data-status="no-date" data-list="NEXT"><a class="task-title" href="https://tasks.google.com/task/RHFkcmpEOUNFOWh0R3FlZQ?sa=6" target="_blank" rel="noopener">Inbox : FW: Strenghtening Key Account Management in Denmark from Brondt, Lars @ Copenhagen<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge no-date">—</span><span class="list-tag">NEXT</span><a class="open-link" href="https://tasks.google.com/task/RHFkcmpEOUNFOWh0R3FlZQ?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div><div class="task-note">http://plxy.co/4mAu2zxz5hCo
+Hi Joseph,
+My colleague Miya in our financial department has some questions abou...</div></div>
+<div class="task" data-status="upcoming" data-list="NEXT"><a class="task-title" href="https://tasks.google.com/task/eTdGTks4U3BxcGFrRWdxUw?sa=6" target="_blank" rel="noopener">Day Book 1st October : 3:55 PM - [High] Schedule a follow-up meeting with Johannes for to review technical management quality, invoicing process, and overall cooperation (Jane / Joseph) [suggested: 20<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge upcoming">1 May</span><span class="list-tag">NEXT</span><a class="open-link" href="https://tasks.google.com/task/eTdGTks4U3BxcGFrRWdxUw?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div><div class="task-note">http://plxy.co/POmwKJCu6RnD</div></div>
+<div class="task" data-status="no-date" data-list="NEXT"><a class="task-title" href="https://tasks.google.com/task/RHFkcmpEOUNFOWh0R3FlZQ?sa=6" target="_blank" rel="noopener">Inbox : FW: Strenghtening Key Account Management in Denmark from Brondt, Lars @ Copenhagen<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge no-date">-</span><span class="list-tag">NEXT</span><a class="open-link" href="https://tasks.google.com/task/RHFkcmpEOUNFOWh0R3FlZQ?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div><div class="task-note">http://plxy.co/4mAu2zxz5hCo
 &lt;-- see full text in source --&gt; 
 
  Hi Joseph and Jane,
 
 
 
-FYI please check the SharePoint si…</div></div>
-<div class="task" data-status="no-date" data-list="NEXT"><a class="task-title" href="https://tasks.google.com/task/NGxXQVloMlpCZ1RRZ0tYaQ?sa=6" target="_blank" rel="noopener">Inbox : Kastrup - Open rents / service charges from KUNZ Johannes<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge no-date">—</span><span class="list-tag">NEXT</span><a class="open-link" href="https://tasks.google.com/task/NGxXQVloMlpCZ1RRZ0tYaQ?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div><div class="task-note">http://plxy.co/QVJcF1oM4a6-
+FYI please check the SharePoint si...</div></div>
+<div class="task" data-status="no-date" data-list="NEXT"><a class="task-title" href="https://tasks.google.com/task/NGxXQVloMlpCZ1RRZ0tYaQ?sa=6" target="_blank" rel="noopener">Inbox : Kastrup - Open rents / service charges from KUNZ Johannes<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge no-date">-</span><span class="list-tag">NEXT</span><a class="open-link" href="https://tasks.google.com/task/NGxXQVloMlpCZ1RRZ0tYaQ?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div><div class="task-note">http://plxy.co/QVJcF1oM4a6-
 External
 
 
@@ -180,8 +156,8 @@ Hi Joseph,
 
 
 
-can you please give me a bit more detailled feedback on the open r…</div></div>
-<div class="task" data-status="overdue" data-list="NEXT"><a class="task-title" href="https://tasks.google.com/task/UVRkNm9xRWdycjFNN2ZxcA?sa=6" target="_blank" rel="noopener">Inbox : Re: K24L - Invoicing to ASR from KUNZ Johannes<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge overdue">Overdue</span><span class="list-tag">NEXT</span><a class="open-link" href="https://tasks.google.com/task/UVRkNm9xRWdycjFNN2ZxcA?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div><div class="task-note">http://plxy.co/b9v-ISEEEXxw
+can you please give me a bit more detailled feedback on the open r...</div></div>
+<div class="task" data-status="overdue" data-list="NEXT"><a class="task-title" href="https://tasks.google.com/task/UVRkNm9xRWdycjFNN2ZxcA?sa=6" target="_blank" rel="noopener">Inbox : Re: K24L - Invoicing to ASR from KUNZ Johannes<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge overdue">Overdue</span><span class="list-tag">NEXT</span><a class="open-link" href="https://tasks.google.com/task/UVRkNm9xRWdycjFNN2ZxcA?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div><div class="task-note">http://plxy.co/b9v-ISEEEXxw
 &lt;-- see full text in source --&gt; 
 
  External
@@ -189,25 +165,48 @@ can you please give me a bit more detailled feedback on the open r…</div></div
 
 
 Hi Peter,
-thanks can you please send the cost…</div></div>
-<div class="task" data-status="overdue" data-list="WAITING"><a class="task-title" href="https://tasks.google.com/task/VlNpTTI1d0wwZTRCYkZaNQ?sa=6" target="_blank" rel="noopener">Finalise service charge reconciliation 2025 before end of March *(CBRE – End of March 2026)*<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge overdue">Overdue</span><span class="list-tag">WAITING</span><a class="open-link" href="https://tasks.google.com/task/VlNpTTI1d0wwZTRCYkZaNQ?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div><div class="task-note">Created in &quot;Meeting Summary – Sydmarken 5 Outstanding Documents&quot; ([Web](https://app.capacities.io/10c9c889-ec88-491c-bfa…</div></div>
-<div class="task" data-status="overdue" data-list="WAITING"><a class="task-title" href="https://tasks.google.com/task/c1lTaGZONnlWY254RTBINA?sa=6" target="_blank" rel="noopener">Inbox : RE: Offboarding - Kornmarksvej 15 from Gancza-Sadowa, Izabela @ Copenhagen<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge overdue">Overdue</span><span class="list-tag">WAITING</span><a class="open-link" href="https://tasks.google.com/task/c1lTaGZONnlWY254RTBINA?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div><div class="task-note">http://plxy.co/A9LhIFd08of9
+thanks can you please send the cost...</div></div>
+<div class="task" data-status="today" data-list="Inbox"><a class="task-title" href="https://tasks.google.com/task/T1o3OTdtZ3ZGbkN6cFhsTA?sa=6" target="_blank" rel="noopener">Inbox : RE: Tenant Meeting Watchlist from HERMETZ Jean-Paul<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge today">Today</span><span class="list-tag">Inbox</span><a class="open-link" href="https://tasks.google.com/task/T1o3OTdtZ3ZGbkN6cFhsTA?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div><div class="task-note">http://plxy.co/yrjpuJ63zURy
+External
+
+
+
+Hi Joseph, 
+
+No remark to Zealand and Jesper watch list 
+
+To FMD, there were 2 l...</div></div>
+<div class="task" data-status="today" data-list="Inbox"><a class="task-title" href="https://tasks.google.com/task/RU1nMTNCTDFPSjdxMkh2aQ?sa=6" target="_blank" rel="noopener">Inbox : ACTION REQUIRED: Yardi Innovation April 2026 from Rosen, Carl Nikolaj @ Copenhagen<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge today">Today</span><span class="list-tag">Inbox</span><a class="open-link" href="https://tasks.google.com/task/RU1nMTNCTDFPSjdxMkh2aQ?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div><div class="task-note">http://plxy.co/XvuQZbm0P28e
+Hi Jane, all,
+
+
+
+As agreed during the Yardi Innovation call on 17 March, you were to summari...</div></div>
+<div class="task" data-status="today" data-list="Inbox"><a class="task-title" href="https://tasks.google.com/task/ZXhFWjR5TnV1Vk1XWUsySA?sa=6" target="_blank" rel="noopener">Inbox : Re: Vandforbrug 2025 -&gt; Sydmarken from Søren Larsen-Jensen<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge today">Today</span><span class="list-tag">Inbox</span><a class="open-link" href="https://tasks.google.com/task/ZXhFWjR5TnV1Vk1XWUsySA?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div><div class="task-note">http://plxy.co/wk1V2w0YUIYs
+External
+
+
+
+Hi Joseph
+When do you expect to send the water reconciliation for 2025?
+••••••••...</div></div>
+<div class="task" data-status="overdue" data-list="WAITING"><a class="task-title" href="https://tasks.google.com/task/c1lTaGZONnlWY254RTBINA?sa=6" target="_blank" rel="noopener">Inbox : RE: Offboarding - Kornmarksvej 15 from Gancza-Sadowa, Izabela @ Copenhagen<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge overdue">Overdue</span><span class="list-tag">WAITING</span><a class="open-link" href="https://tasks.google.com/task/c1lTaGZONnlWY254RTBINA?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div><div class="task-note">http://plxy.co/A9LhIFd08of9
 &lt;-- see full text in source --&gt; 
 
  Hi all,
 
 
 
-I have identified the below tasks to be done a…</div></div>
-<div class="task" data-status="overdue" data-list="WAITING"><a class="task-title" href="https://tasks.google.com/task/SWtHTDdadmpYRi1ReUwwRA?sa=6" target="_blank" rel="noopener">Inbox : Re: Sydmarken Asset Electricity Meter Mapping from HERMETZ Jean-Paul<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge overdue">Overdue</span><span class="list-tag">WAITING</span><a class="open-link" href="https://tasks.google.com/task/SWtHTDdadmpYRi1ReUwwRA?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div><div class="task-note">http://plxy.co/dOxOIOCJXUng
+I have identified the below tasks to be done a...</div></div>
+<div class="task" data-status="overdue" data-list="WAITING"><a class="task-title" href="https://tasks.google.com/task/SWtHTDdadmpYRi1ReUwwRA?sa=6" target="_blank" rel="noopener">Inbox : Re: Sydmarken Asset Electricity Meter Mapping from HERMETZ Jean-Paul<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge overdue">Overdue</span><span class="list-tag">WAITING</span><a class="open-link" href="https://tasks.google.com/task/SWtHTDdadmpYRi1ReUwwRA?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div><div class="task-note">http://plxy.co/dOxOIOCJXUng
 &lt;-- see full text in source --&gt; 
 
  External
 
 
 
-Joseph, NicolaiHave you progressed on the rec…</div></div>
-<div class="task" data-status="overdue" data-list="WAITING"><a class="task-title" href="https://tasks.google.com/task/ci1KNnhvWG1mR2VDQTNlMw?sa=6" target="_blank" rel="noopener">Inbox : FW: GRESB data collection EUROCORE from VEDDER Stefanie<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge overdue">Overdue</span><span class="list-tag">WAITING</span><a class="open-link" href="https://tasks.google.com/task/ci1KNnhvWG1mR2VDQTNlMw?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div><div class="task-note">http://plxy.co/QjazrQI3Ro1S
+Joseph, NicolaiHave you progressed on the rec...</div></div>
+<div class="task" data-status="overdue" data-list="WAITING"><a class="task-title" href="https://tasks.google.com/task/ci1KNnhvWG1mR2VDQTNlMw?sa=6" target="_blank" rel="noopener">Inbox : FW: GRESB data collection EUROCORE from VEDDER Stefanie<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge overdue">Overdue</span><span class="list-tag">WAITING</span><a class="open-link" href="https://tasks.google.com/task/ci1KNnhvWG1mR2VDQTNlMw?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div><div class="task-note">http://plxy.co/QjazrQI3Ro1S
 &lt;-- see full text in source --&gt; 
 
  External
@@ -218,14 +217,14 @@ Dear Martin, dear Joseph,
 
 
 
-Please find atta…</div></div>
-<div class="task" data-status="overdue" data-list="WAITING"><a class="task-title" href="https://tasks.google.com/task/cEhFdWtBVGItZFpjc29yNg?sa=6" target="_blank" rel="noopener">Inbox : M&amp;G workshop Finland - summary from Ruigendijk, Krista @ Helsinki<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge overdue">Overdue</span><span class="list-tag">WAITING</span><a class="open-link" href="https://tasks.google.com/task/cEhFdWtBVGItZFpjc29yNg?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div><div class="task-note">http://plxy.co/k9vk33fAsaIA
+Please find atta...</div></div>
+<div class="task" data-status="overdue" data-list="WAITING"><a class="task-title" href="https://tasks.google.com/task/cEhFdWtBVGItZFpjc29yNg?sa=6" target="_blank" rel="noopener">Inbox : M&amp;G workshop Finland - summary from Ruigendijk, Krista @ Helsinki<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge overdue">Overdue</span><span class="list-tag">WAITING</span><a class="open-link" href="https://tasks.google.com/task/cEhFdWtBVGItZFpjc29yNg?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div><div class="task-note">http://plxy.co/k9vk33fAsaIA
 Dear M&amp;G Nordic team!
 
 
 
-It was great to see all of you in Finland this week. I hope you fou…</div></div>
-<div class="task" data-status="overdue" data-list="WAITING"><a class="task-title" href="https://tasks.google.com/task/SFpPN1IzZ1BsMkotSUpURA?sa=6" target="_blank" rel="noopener">Inbox : FW: Pre-payment budget 2026 dialog  from Jeppe Bak Andreasen<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge overdue">Overdue</span><span class="list-tag">WAITING</span><a class="open-link" href="https://tasks.google.com/task/SFpPN1IzZ1BsMkotSUpURA?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div><div class="task-note">http://plxy.co/kRxp801vNjT_
+It was great to see all of you in Finland this week. I hope you fou...</div></div>
+<div class="task" data-status="overdue" data-list="WAITING"><a class="task-title" href="https://tasks.google.com/task/SFpPN1IzZ1BsMkotSUpURA?sa=6" target="_blank" rel="noopener">Inbox : FW: Pre-payment budget 2026 dialog  from Jeppe Bak Andreasen<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge overdue">Overdue</span><span class="list-tag">WAITING</span><a class="open-link" href="https://tasks.google.com/task/SFpPN1IzZ1BsMkotSUpURA?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div><div class="task-note">http://plxy.co/kRxp801vNjT_
 &lt;-- see full text in source --&gt; 
 
  External
@@ -236,8 +235,8 @@ Dear Joseph
 
 
 
-Thank you for sharing the upd…</div></div>
-<div class="task" data-status="overdue" data-list="WAITING"><a class="task-title" href="https://tasks.google.com/task/SlpMV1NHV0pHRkxBVEhURg?sa=6" target="_blank" rel="noopener">Inbox : Fwd: EELVF IV Denmark G2 S.a.r.l - Mail handling from Bart Ligter<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge overdue">Overdue</span><span class="list-tag">WAITING</span><a class="open-link" href="https://tasks.google.com/task/SlpMV1NHV0pHRkxBVEhURg?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div><div class="task-note">http://plxy.co/zl0xDBk37pq7
+Thank you for sharing the upd...</div></div>
+<div class="task" data-status="overdue" data-list="WAITING"><a class="task-title" href="https://tasks.google.com/task/SlpMV1NHV0pHRkxBVEhURg?sa=6" target="_blank" rel="noopener">Inbox : Fwd: EELVF IV Denmark G2 S.a.r.l - Mail handling from Bart Ligter<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge overdue">Overdue</span><span class="list-tag">WAITING</span><a class="open-link" href="https://tasks.google.com/task/SlpMV1NHV0pHRkxBVEhURg?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div><div class="task-note">http://plxy.co/zl0xDBk37pq7
 &lt;-- see full text in source --&gt; 
 
  External
@@ -245,32 +244,18 @@ Thank you for sharing the upd…</div></div>
 
 
 Hi Joseph &amp; Peter,
-Could you please take the …</div></div>
-<div class="task" data-status="overdue" data-list="THIS WEEK"><a class="task-title" href="https://tasks.google.com/task/UzVDMHNvTDBFblhQaUtpUA?sa=6" target="_blank" rel="noopener">Inbox : RE: EQT Tenancy Schedule 2026 / fee approval from Rosen, Carl Nikolaj @ Copenhagen<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge overdue">Overdue</span><span class="list-tag">THIS WEEK</span><a class="open-link" href="https://tasks.google.com/task/UzVDMHNvTDBFblhQaUtpUA?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div><div class="task-note">http://plxy.co/91bFWToL_wEZ
+Could you please take the ...</div></div>
+<div class="task" data-status="overdue" data-list="THIS WEEK"><a class="task-title" href="https://tasks.google.com/task/UzVDMHNvTDBFblhQaUtpUA?sa=6" target="_blank" rel="noopener">Inbox : RE: EQT Tenancy Schedule 2026 / fee approval from Rosen, Carl Nikolaj @ Copenhagen<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge overdue">Overdue</span><span class="list-tag">THIS WEEK</span><a class="open-link" href="https://tasks.google.com/task/UzVDMHNvTDBFblhQaUtpUA?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div><div class="task-note">http://plxy.co/91bFWToL_wEZ
 &lt;-- see full text in source --&gt; 
 
  Hi Joseph,
 
 
 
-Could you please inform client/request appr…</div></div>
-<div class="task" data-status="today" data-list="THIS WEEK"><a class="task-title" href="https://tasks.google.com/task/aGZ6bm5KanFYT0F6dkhCdQ?sa=6" target="_blank" rel="noopener">Day Book 1st October : Sydmarken Information Request Invoice - Put together invoice for EWA for Sydmarken additional work<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge today">Today</span><span class="list-tag">THIS WEEK</span><a class="open-link" href="https://tasks.google.com/task/aGZ6bm5KanFYT0F6dkhCdQ?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div><div class="task-note">http://plxy.co/RlKwPTrgdkge</div></div>
-<div class="task" data-status="overdue" data-list="THIS WEEK"><a class="task-title" href="https://tasks.google.com/task/N1VKa3dYWFlRalFwQ2JGUw?sa=6" target="_blank" rel="noopener">Inbox : New Danish Property Valuations - from our meeting from Grundahl, Emil @ Copenhagen<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge overdue">Overdue</span><span class="list-tag">THIS WEEK</span><a class="open-link" href="https://tasks.google.com/task/N1VKa3dYWFlRalFwQ2JGUw?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div><div class="task-note">http://plxy.co/8oA3RSO8fZHc
-Dear KAMs 
-
-
-
-In connection with the new Danish property valuation system and the upcoming
-i…</div></div>
-<div class="task" data-status="overdue" data-list="THIS WEEK"><a class="task-title" href="https://tasks.google.com/task/TldaeUFSSzlXenYtMC1EeQ?sa=6" target="_blank" rel="noopener">Inbox : Re: Faktura/Invoice (202600000070) from Weiqi Zhang<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge overdue">Overdue</span><span class="list-tag">THIS WEEK</span><a class="open-link" href="https://tasks.google.com/task/TldaeUFSSzlXenYtMC1EeQ?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div><div class="task-note">http://plxy.co/sAtAgKoXG3Go
-External
-
-
-
-Hi Joseph,
-My colleague Miya in our financial department has some questions abou…</div></div>
-<div class="task" data-status="overdue" data-list="THIS WEEK"><a class="task-title" href="https://tasks.google.com/task/X2EtOExWa1JTek96NnNNNQ?sa=6" target="_blank" rel="noopener">Get the 2026 Budget Setup on Yardi<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge overdue">Overdue</span><span class="list-tag">THIS WEEK</span><a class="open-link" href="https://tasks.google.com/task/X2EtOExWa1JTek96NnNNNQ?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div></div>
-<div class="task" data-status="overdue" data-list="THIS WEEK"><a class="task-title" href="https://tasks.google.com/task/SjJlMURQZVN5OUZNTFV6Tg?sa=6" target="_blank" rel="noopener">Inbox : FW: Draft Lease Agreement - Management Office Building N from VEDDER Stefanie<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge overdue">Overdue</span><span class="list-tag">THIS WEEK</span><a class="open-link" href="https://tasks.google.com/task/SjJlMURQZVN5OUZNTFV6Tg?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div><div class="task-note">http://plxy.co/sV3fpEPNKBCZ
+Could you please inform client/request appr...</div></div>
+<div class="task" data-status="today" data-list="THIS WEEK"><a class="task-title" href="https://tasks.google.com/task/aGZ6bm5KanFYT0F6dkhCdQ?sa=6" target="_blank" rel="noopener">Day Book 1st October : Sydmarken Information Request Invoice - Put together invoice for EWA for Sydmarken additional work<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge today">Today</span><span class="list-tag">THIS WEEK</span><a class="open-link" href="https://tasks.google.com/task/aGZ6bm5KanFYT0F6dkhCdQ?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div><div class="task-note">http://plxy.co/RlKwPTrgdkge</div></div>
+<div class="task" data-status="overdue" data-list="THIS WEEK"><a class="task-title" href="https://tasks.google.com/task/X2EtOExWa1JTek96NnNNNQ?sa=6" target="_blank" rel="noopener">Get the 2026 Budget Setup on Yardi<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge overdue">Overdue</span><span class="list-tag">THIS WEEK</span><a class="open-link" href="https://tasks.google.com/task/X2EtOExWa1JTek96NnNNNQ?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div></div>
+<div class="task" data-status="overdue" data-list="THIS WEEK"><a class="task-title" href="https://tasks.google.com/task/SjJlMURQZVN5OUZNTFV6Tg?sa=6" target="_blank" rel="noopener">Inbox : FW: Draft Lease Agreement - Management Office Building N from VEDDER Stefanie<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge overdue">Overdue</span><span class="list-tag">THIS WEEK</span><a class="open-link" href="https://tasks.google.com/task/SjJlMURQZVN5OUZNTFV6Tg?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div><div class="task-note">http://plxy.co/sV3fpEPNKBCZ
 &lt;-- see full text in source --&gt; 
 
  External
@@ -281,71 +266,53 @@ Hallo Joseph,
 
 
 
-Please find the reviewed com…</div></div>
-<div class="task" data-status="overdue" data-list="THIS WEEK"><a class="task-title" href="https://tasks.google.com/task/Sm5OZ09BUjlhSnF6YXVCVg?sa=6" target="_blank" rel="noopener">Continue preparing memo on works carried out (3.5) with project manager *(CBRE Technical)*<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge overdue">Overdue</span><span class="list-tag">THIS WEEK</span><a class="open-link" href="https://tasks.google.com/task/Sm5OZ09BUjlhSnF6YXVCVg?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div><div class="task-note">Created in &quot;Meeting Summary – Sydmarken 5 Outstanding Documents&quot; ([Web](https://app.capacities.io/10c9c889-ec88-491c-bfa…</div></div>
-<div class="task" data-status="overdue" data-list="THIS WEEK"><a class="task-title" href="https://tasks.google.com/task/ZVVXZVFiY0hGN0VEanBJVw?sa=6" target="_blank" rel="noopener">Chase Martin for update on municipality response re: building permits (3.1) and occupancy permits (3.3) *(Joseph – Today)*<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge overdue">Overdue</span><span class="list-tag">THIS WEEK</span><a class="open-link" href="https://tasks.google.com/task/ZVVXZVFiY0hGN0VEanBJVw?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div><div class="task-note">Created in &quot;Meeting Summary – Sydmarken 5 Outstanding Documents&quot; ([Web](https://app.capacities.io/10c9c889-ec88-491c-bfa…</div></div>
-<div class="task" data-status="overdue" data-list="LATER"><a class="task-title" href="https://tasks.google.com/task/ODNkbXh1czRQNm9FYWlwbg?sa=6" target="_blank" rel="noopener">Inbox : FW: Kystvejen 24 - 28 - AEW - Techem site visit - Utility consumption &amp; unit splitting from Porter, Nicholai @ Copenhagen<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge overdue">Overdue</span><span class="list-tag">LATER</span><a class="open-link" href="https://tasks.google.com/task/ODNkbXh1czRQNm9FYWlwbg?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div><div class="task-note">http://plxy.co/QeV3blW2ojy9
+Please find the reviewed com...</div></div>
+<div class="task" data-status="overdue" data-list="THIS WEEK"><a class="task-title" href="https://tasks.google.com/task/Sm5OZ09BUjlhSnF6YXVCVg?sa=6" target="_blank" rel="noopener">Continue preparing memo on works carried out (3.5) with project manager *(CBRE Technical)*<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge overdue">Overdue</span><span class="list-tag">THIS WEEK</span><a class="open-link" href="https://tasks.google.com/task/Sm5OZ09BUjlhSnF6YXVCVg?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div><div class="task-note">Created in &quot;Meeting Summary – Sydmarken 5 Outstanding Documents&quot; ([Web](https://app.capacities.io/10c9c889-ec88-491c-bfa...</div></div>
+<div class="task" data-status="overdue" data-list="THIS WEEK"><a class="task-title" href="https://tasks.google.com/task/ZVVXZVFiY0hGN0VEanBJVw?sa=6" target="_blank" rel="noopener">Chase Martin for update on municipality response re: building permits (3.1) and occupancy permits (3.3) *(Joseph – Today)*<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge overdue">Overdue</span><span class="list-tag">THIS WEEK</span><a class="open-link" href="https://tasks.google.com/task/ZVVXZVFiY0hGN0VEanBJVw?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div><div class="task-note">Created in &quot;Meeting Summary – Sydmarken 5 Outstanding Documents&quot; ([Web](https://app.capacities.io/10c9c889-ec88-491c-bfa...</div></div></div>
+  <div class="col" style="animation-delay:0.15s"><div class="col-head">&#x1F4C5; This Week<span class="col-count">7</span></div><div class="no-results">No tasks match this filter.</div><div class="task" data-status="upcoming" data-list="THIS WEEK"><a class="task-title" href="https://tasks.google.com/task/VlNpTTI1d0wwZTRCYkZaNQ?sa=6" target="_blank" rel="noopener">Finalise service charge reconciliation 2025 before end of March *(CBRE – End of March 2026)*<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge upcoming">17 Apr</span><span class="list-tag">THIS WEEK</span><a class="open-link" href="https://tasks.google.com/task/VlNpTTI1d0wwZTRCYkZaNQ?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div><div class="task-note">Created in &quot;Meeting Summary – Sydmarken 5 Outstanding Documents&quot; ([Web](https://app.capacities.io/10c9c889-ec88-491c-bfa...</div></div>
+<div class="task" data-status="no-date" data-list="THIS WEEK"><a class="task-title" href="https://tasks.google.com/task/Zm1zay1TNk9vTnJucXNCRA?sa=6" target="_blank" rel="noopener">Day Book 1st October : Property Tax Re-valuations (CRM) - [Low] Update (Lars) the property overview to note that AEW Kusfai / airport asset does not require standard client email send [suggested: 2026<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge no-date">-</span><span class="list-tag">THIS WEEK</span><a class="open-link" href="https://tasks.google.com/task/Zm1zay1TNk9vTnJucXNCRA?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div><div class="task-note">http://plxy.co/oto473-Pi4pk</div></div>
+<div class="task" data-status="no-date" data-list="THIS WEEK"><a class="task-title" href="https://tasks.google.com/task/RUt3LWlVMlZvSFpXZDhIMA?sa=6" target="_blank" rel="noopener">Day Book 1st October : Property Tax Re-valuations (CRM) - [Medium] Archive (all KAMs) sent outreach emails in the new &quot;Valuations&quot; SharePoint folder for audit/liability purposes [suggested: 2026-04-14<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge no-date">-</span><span class="list-tag">THIS WEEK</span><a class="open-link" href="https://tasks.google.com/task/RUt3LWlVMlZvSFpXZDhIMA?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div><div class="task-note">http://plxy.co/oto473-Pi4pk</div></div>
+<div class="task" data-status="no-date" data-list="THIS WEEK"><a class="task-title" href="https://tasks.google.com/task/c1B6SHJxZGhpUUlabEJ0eQ?sa=6" target="_blank" rel="noopener">Day Book 1st October : Property Tax Re-valuations (CRM) - [Medium] Reach out (Lars/Joseph) to the airport on behalf of AEW clients to flag the valuation process and offer referral to Thomas if needed<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge no-date">-</span><span class="list-tag">THIS WEEK</span><a class="open-link" href="https://tasks.google.com/task/c1B6SHJxZGhpUUlabEJ0eQ?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div><div class="task-note">http://plxy.co/oto473-Pi4pk</div></div>
+<div class="task" data-status="no-date" data-list="THIS WEEK"><a class="task-title" href="https://tasks.google.com/task/dDQ4NkV6WWtnMW5DSHVEbg?sa=6" target="_blank" rel="noopener">Day Book 1st October : 3:55 PM - [Medium] Review and map the current CapEx invoice approval workflow in Yardi, including whether Rene's approval step should be removed or restructured (Jane Lorenzon)<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge no-date">-</span><span class="list-tag">THIS WEEK</span><a class="open-link" href="https://tasks.google.com/task/dDQ4NkV6WWtnMW5DSHVEbg?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div><div class="task-note">http://plxy.co/POmwKJCu6RnD</div></div>
+<div class="task" data-status="no-date" data-list="THIS WEEK"><a class="task-title" href="https://tasks.google.com/task/Vm9EOWVtYVp0U0hmT1BmVA?sa=6" target="_blank" rel="noopener">Day Book 1st October : 3:55 PM - [Medium] Invite Jane Lorenzon to the next on-site visit at Kystvejen, coordinated around the ASR fit-out handover (~8 May) (Joseph) [suggested: 2026-04-15]<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge no-date">-</span><span class="list-tag">THIS WEEK</span><a class="open-link" href="https://tasks.google.com/task/Vm9EOWVtYVp0U0hmT1BmVA?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div><div class="task-note">http://plxy.co/POmwKJCu6RnD</div></div>
+<div class="task" data-status="no-date" data-list="THIS WEEK"><a class="task-title" href="https://tasks.google.com/task/bWlCZVVSV08tTzVkZjNORg?sa=6" target="_blank" rel="noopener">Day Book 1st October : 3:55 PM - [Medium] Confirm and standardise the technical recommendation template in use – ensure alignment between the AIW-approved Word format and what CBRE is currently submit<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge no-date">-</span><span class="list-tag">THIS WEEK</span><a class="open-link" href="https://tasks.google.com/task/bWlCZVVSV08tTzVkZjNORg?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div><div class="task-note">http://plxy.co/POmwKJCu6RnD</div></div></div>
+  <div class="col" style="animation-delay:0.25s"><div class="col-head">&#x1F4C2; Waiting · Inbox · Meeting Prep<span class="col-count">16</span></div><div class="no-results">No tasks match this filter.</div><div class="task" data-status="no-date" data-list="Inbox"><a class="task-title" href="https://tasks.google.com/task/bEROSDNZbjExd0JkY0VMSg?sa=6" target="_blank" rel="noopener">Inbox : RE: New Rent Roll SSCP  from Lepper, Phillip @ Glasgow<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge no-date">-</span><span class="list-tag">Inbox</span><a class="open-link" href="https://tasks.google.com/task/bEROSDNZbjExd0JkY0VMSg?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div><div class="task-note">http://plxy.co/mECtAYhsQZxb
 &lt;-- see full text in source --&gt; 
 
- Could you assist Techem with the below information on Kys…</div></div>
-<div class="task" data-status="overdue" data-list="LATER"><a class="task-title" href="https://tasks.google.com/task/Mm93YVFtQnlkRXNEU0tCcw?sa=6" target="_blank" rel="noopener">Chase Jane with regard to the year wheel.<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge overdue">Overdue</span><span class="list-tag">LATER</span><a class="open-link" href="https://tasks.google.com/task/Mm93YVFtQnlkRXNEU0tCcw?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div></div>
-<div class="task" data-status="overdue" data-list="LATER"><a class="task-title" href="https://tasks.google.com/task/RWRBNzlpTm83WkgxNXlrSw?sa=6" target="_blank" rel="noopener">Inbox : FW: New colleague Klara - BNP Nordics from Brondt, Lars @ Copenhagen<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge overdue">Overdue</span><span class="list-tag">LATER</span><a class="open-link" href="https://tasks.google.com/task/RWRBNzlpTm83WkgxNXlrSw?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div><div class="task-note">http://plxy.co/gFiZh9Kebdt8
-&lt;-- see full text in source --&gt; 
+ Hi Joseph and Lisbeth,
 
- FYI
+Thanks Lisbeth on the confirmatio...</div></div>
+<div class="task" data-status="upcoming" data-list="Inbox"><a class="task-title" href="https://tasks.google.com/task/b2NZa3B1c2NXeGpBMDNvbg?sa=6" target="_blank" rel="noopener">Inbox : Country Feedback - Upcoming BNPP Quarterly Meeting from Smyth, Edward @ Dublin<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge upcoming">16 Apr</span><span class="list-tag">Inbox</span><a class="open-link" href="https://tasks.google.com/task/b2NZa3B1c2NXeGpBMDNvbg?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div><div class="task-note">http://plxy.co/Frv1KkxsSTXK
 
 
-
+Hi All, I hope everyone had a nice Easter break.
 
 
 
-
-Med venlig hilsen/Best regards,
-
-
-
-Lars Brondt…</div></div>
-<div class="task" data-status="overdue" data-list="LATER"><a class="task-title" href="https://tasks.google.com/task/R1ZjZEZDZk12VlVMUWtCMQ?sa=6" target="_blank" rel="noopener">**Initiate the Pitch Library:** Gather the recent Savills pitch materials and the PM presentation to serve as the baseline for the new framework initiative you agreed to build.<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge overdue">Overdue</span><span class="list-tag">LATER</span><a class="open-link" href="https://tasks.google.com/task/R1ZjZEZDZk12VlVMUWtCMQ?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div><div class="task-note">Created in &quot;1:1 Meeting Summary — Mar 9&quot; ([Web](https://app.capacities.io/10c9c889-ec88-491c-bfa6-918773e06609/077c21a4-…</div></div>
-<div class="task" data-status="overdue" data-list="LATER"><a class="task-title" href="https://tasks.google.com/task/Q0JjR1AxbmNSSkozSnBVVg?sa=6" target="_blank" rel="noopener">Upload memo confirming insurance premium paid once invoice is received and settled *(Jean-Paul / CBRE)*<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge overdue">Overdue</span><span class="list-tag">LATER</span><a class="open-link" href="https://tasks.google.com/task/Q0JjR1AxbmNSSkozSnBVVg?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div><div class="task-note">Created in &quot;Meeting Summary – Sydmarken 5 Outstanding Documents&quot; ([Web](https://app.capacities.io/10c9c889-ec88-491c-bfa…</div></div>
-<div class="task" data-status="overdue" data-list="LATER"><a class="task-title" href="https://tasks.google.com/task/dU1Yb043ZW02MjJSakhOeg?sa=6" target="_blank" rel="noopener">Inbox : Premises sizes K26 and service charges from KUNZ Johannes<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge overdue">Overdue</span><span class="list-tag">LATER</span><a class="open-link" href="https://tasks.google.com/task/dU1Yb043ZW02MjJSakhOeg?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div><div class="task-note">http://plxy.co/X6o0_O8EyG4q
-External
-
-
-
-Hi Joseph,
-
-
-
-can you please send me the overview of PostNord’s premises which i…</div></div>
-<div class="task" data-status="overdue" data-list="LATER"><a class="task-title" href="https://tasks.google.com/task/blN3MUZpZ1RPdl9wVzhjNA?sa=6" target="_blank" rel="noopener">Provide updated Repairs &amp; Maintenance watch list closer to VDR opening and rename folder from &quot;Building Damages&quot; *(Joseph / CBRE)*<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge overdue">Overdue</span><span class="list-tag">LATER</span><a class="open-link" href="https://tasks.google.com/task/blN3MUZpZ1RPdl9wVzhjNA?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div><div class="task-note">Created in &quot;Meeting Summary – Sydmarken 5 Outstanding Documents&quot; ([Web](https://app.capacities.io/10c9c889-ec88-491c-bfa…</div></div>
-<div class="task" data-status="overdue" data-list="LATER"><a class="task-title" href="https://tasks.google.com/task/dGlUTWhlaXNNUHdQanFsXw?sa=6" target="_blank" rel="noopener">Inbox : FW: Faktura 5424 from Magnus, Mads @ København K<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge overdue">Overdue</span><span class="list-tag">LATER</span><a class="open-link" href="https://tasks.google.com/task/dGlUTWhlaXNNUHdQanFsXw?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div><div class="task-note">http://plxy.co/5NE8GUTvimZK
-&lt;-- see full text in source --&gt; 
-
- Hi Joseph
-
-I became aware of the problem with the invoice…</div></div></div>
-  <div class="col" style="animation-delay:0.15s"><div class="col-head">📅 This Week<span class="col-count">6</span></div><div class="task" data-status="no-date" data-list="THIS WEEK"><a class="task-title" href="https://tasks.google.com/task/c1B6SHJxZGhpUUlabEJ0eQ?sa=6" target="_blank" rel="noopener">Day Book 1st October : Property Tax-re-valuations. Crm: - [Medium] Reach out (Lars/Joseph) to the airport on behalf of AEW clients to flag the valuation process and offer referral to Thomas if needed<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge no-date">—</span><span class="list-tag">THIS WEEK</span><a class="open-link" href="https://tasks.google.com/task/c1B6SHJxZGhpUUlabEJ0eQ?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div><div class="task-note">http://plxy.co/Fdxq3QnIRTxG</div></div>
-<div class="task" data-status="no-date" data-list="THIS WEEK"><a class="task-title" href="https://tasks.google.com/task/RUt3LWlVMlZvSFpXZDhIMA?sa=6" target="_blank" rel="noopener">Day Book 1st October : Property Tax-re-valuations. Crm: - [Medium] Archive (all KAMs) sent outreach emails in the new &quot;Valuations&quot; SharePoint folder for audit/liability purposes [suggested: 2026-04-14<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge no-date">—</span><span class="list-tag">THIS WEEK</span><a class="open-link" href="https://tasks.google.com/task/RUt3LWlVMlZvSFpXZDhIMA?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div><div class="task-note">http://plxy.co/Fdxq3QnIRTxG</div></div>
-<div class="task" data-status="no-date" data-list="THIS WEEK"><a class="task-title" href="https://tasks.google.com/task/Zm1zay1TNk9vTnJucXNCRA?sa=6" target="_blank" rel="noopener">Day Book 1st October : Property Tax-re-valuations. Crm: - [Low] Update (Lars) the property overview to note that AEW Kusfai / airport asset does not require standard client email send [suggested: 2026<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge no-date">—</span><span class="list-tag">THIS WEEK</span><a class="open-link" href="https://tasks.google.com/task/Zm1zay1TNk9vTnJucXNCRA?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div><div class="task-note">http://plxy.co/Fdxq3QnIRTxG</div></div>
-<div class="task" data-status="no-date" data-list="THIS WEEK"><a class="task-title" href="https://tasks.google.com/task/dDQ4NkV6WWtnMW5DSHVEbg?sa=6" target="_blank" rel="noopener">Day Book 1st October : 3:55 PM - [Medium] Review and map the current CapEx invoice approval workflow in Yardi, including whether Rene's approval step should be removed or restructured (Jane Lorenzon)<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge no-date">—</span><span class="list-tag">THIS WEEK</span><a class="open-link" href="https://tasks.google.com/task/dDQ4NkV6WWtnMW5DSHVEbg?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div><div class="task-note">http://plxy.co/POmwKJCu6RnD</div></div>
-<div class="task" data-status="no-date" data-list="THIS WEEK"><a class="task-title" href="https://tasks.google.com/task/Vm9EOWVtYVp0U0hmT1BmVA?sa=6" target="_blank" rel="noopener">Day Book 1st October : 3:55 PM - [Medium] Invite Jane Lorenzon to the next on-site visit at Kystvejen, coordinated around the ASR fit-out handover (~8 May) (Joseph) [suggested: 2026-04-15]<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge no-date">—</span><span class="list-tag">THIS WEEK</span><a class="open-link" href="https://tasks.google.com/task/Vm9EOWVtYVp0U0hmT1BmVA?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div><div class="task-note">http://plxy.co/POmwKJCu6RnD</div></div>
-<div class="task" data-status="no-date" data-list="THIS WEEK"><a class="task-title" href="https://tasks.google.com/task/bWlCZVVSV08tTzVkZjNORg?sa=6" target="_blank" rel="noopener">Day Book 1st October : 3:55 PM - [Medium] Confirm and standardise the technical recommendation template in use – ensure alignment between the AIW-approved Word format and what CBRE is currently submit<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge no-date">—</span><span class="list-tag">THIS WEEK</span><a class="open-link" href="https://tasks.google.com/task/bWlCZVVSV08tTzVkZjNORg?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div><div class="task-note">http://plxy.co/POmwKJCu6RnD</div></div></div>
-  <div class="col" style="animation-delay:0.25s"><div class="col-head">📂 Waiting · Inbox · Meeting Prep<span class="col-count">6</span></div><div class="task" data-status="no-date" data-list="Inbox"><a class="task-title" href="https://tasks.google.com/task/UEtxaFRYWkI0TzJoNEV6LQ?sa=6" target="_blank" rel="noopener">Start applying for residency<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge no-date">—</span><span class="list-tag">Inbox</span><a class="open-link" href="https://tasks.google.com/task/UEtxaFRYWkI0TzJoNEV6LQ?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div></div>
-<div class="task" data-status="no-date" data-list="WAITING"><a class="task-title" href="https://tasks.google.com/task/Slg4ZjZRMVZGd0o1dkVsZQ?sa=6" target="_blank" rel="noopener">Day Book 1st October : SERVICE CHARGE RECONCILIATION 2025 - 5. [Open] Retrieve Sep/Oct 2024 tenant email re: on-account increases and share with Stephanie Owner: Joseph<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge no-date">—</span><span class="list-tag">WAITING</span><a class="open-link" href="https://tasks.google.com/task/Slg4ZjZRMVZGd0o1dkVsZQ?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div><div class="task-note">http://plxy.co/ED8uBCnWQwCo</div></div>
-<div class="task" data-status="no-date" data-list="MEETING PREP"><a class="task-title" href="https://tasks.google.com/task/amE2VFpXWjVwSGVjQ21LNQ?sa=6" target="_blank" rel="noopener">Day Book 1st October : AXA Meeting - • Align with Maunas (Finland) regarding client expectations before the call with Hamza - Speaker B (Joseph) - Before the meeting with Hamza<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge no-date">—</span><span class="list-tag">MEETING PREP</span><a class="open-link" href="https://tasks.google.com/task/amE2VFpXWjVwSGVjQ21LNQ?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div><div class="task-note">http://plxy.co/zfhTx6eBZElX</div></div>
-<div class="task" data-status="upcoming" data-list="LATER"><a class="task-title" href="https://tasks.google.com/task/QUpRYzF5SzVlY2JSMVpwMQ?sa=6" target="_blank" rel="noopener">Day Book 1st October : AXA Meeting - • Email Hamza to schedule a 30-minute clarification meeting for the week after Easter - Speaker B (Joseph) - End of this week<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge upcoming">14 Apr</span><span class="list-tag">LATER</span><a class="open-link" href="https://tasks.google.com/task/QUpRYzF5SzVlY2JSMVpwMQ?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div><div class="task-note">http://plxy.co/zfhTx6eBZElX</div></div>
-<div class="task" data-status="upcoming" data-list="LATER"><a class="task-title" href="https://tasks.google.com/task/ZnVicnd5V3gtODhWb18xOQ?sa=6" target="_blank" rel="noopener">Day Book 1st October : AXA Meeting - • Review the PMA and create a structured list of scope items to prepare for the client meeting - Speaker B (Joseph) - Before the meeting with Hamza<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge upcoming">14 Apr</span><span class="list-tag">LATER</span><a class="open-link" href="https://tasks.google.com/task/ZnVicnd5V3gtODhWb18xOQ?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div><div class="task-note">http://plxy.co/zfhTx6eBZElX</div></div>
-<div class="task" data-status="no-date" data-list="LATER"><a class="task-title" href="https://tasks.google.com/task/YkwwRnVMb2lvQkFXSnRtQQ?sa=6" target="_blank" rel="noopener">Day Book 1st October : Property Tax-re-valuations. Crm: - [Medium] Inform (Joseph) Johannes about the airport/AEW Kusfai situation before his next quarterly airport meeting [suggested: 2026-03-28]<span class="open-icon">↗</span></a><div class="task-meta"><span class="badge no-date">—</span><span class="list-tag">LATER</span><a class="open-link" href="https://tasks.google.com/task/YkwwRnVMb2lvQkFXSnRtQQ?sa=6" target="_blank" rel="noopener">Open in Tasks ↗</a></div><div class="task-note">http://plxy.co/Fdxq3QnIRTxG</div></div></div>
+Our next Quarterly meeting with BNPP i...</div></div>
+<div class="task" data-status="no-date" data-list="Inbox"><a class="task-title" href="https://tasks.google.com/task/UEtxaFRYWkI0TzJoNEV6LQ?sa=6" target="_blank" rel="noopener">Start applying for residency<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge no-date">-</span><span class="list-tag">Inbox</span><a class="open-link" href="https://tasks.google.com/task/UEtxaFRYWkI0TzJoNEV6LQ?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div></div>
+<div class="task" data-status="no-date" data-list="WAITING"><a class="task-title" href="https://tasks.google.com/task/Slg4ZjZRMVZGd0o1dkVsZQ?sa=6" target="_blank" rel="noopener">Day Book 1st October : SERVICE CHARGE RECONCILIATION 2025 - 5. [Open] Retrieve Sep/Oct 2024 tenant email re: on-account increases and share with Stephanie Owner: Joseph<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge no-date">-</span><span class="list-tag">WAITING</span><a class="open-link" href="https://tasks.google.com/task/Slg4ZjZRMVZGd0o1dkVsZQ?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div><div class="task-note">http://plxy.co/ED8uBCnWQwCo</div></div>
+<div class="task" data-status="no-date" data-list="MEETING PREP"><a class="task-title" href="https://tasks.google.com/task/amE2VFpXWjVwSGVjQ21LNQ?sa=6" target="_blank" rel="noopener">Day Book 1st October : AXA Meeting - • Align with Maunas (Finland) regarding client expectations before the call with Hamza - Speaker B (Joseph) - Before the meeting with Hamza<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge no-date">-</span><span class="list-tag">MEETING PREP</span><a class="open-link" href="https://tasks.google.com/task/amE2VFpXWjVwSGVjQ21LNQ?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div><div class="task-note">http://plxy.co/zfhTx6eBZElX</div></div>
+<div class="task" data-status="no-date" data-list="LATER"><a class="task-title" href="https://tasks.google.com/task/YkwwRnVMb2lvQkFXSnRtQQ?sa=6" target="_blank" rel="noopener">Day Book 1st October : Property Tax Re-valuations (CRM) - [Medium] Inform (Joseph) Johannes about the airport/AEW Kusfai situation before his next quarterly airport meeting [suggested: 2026-03-28]<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge no-date">-</span><span class="list-tag">LATER</span><a class="open-link" href="https://tasks.google.com/task/YkwwRnVMb2lvQkFXSnRtQQ?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div><div class="task-note">http://plxy.co/oto473-Pi4pk</div></div>
+<div class="task" data-status="upcoming" data-list="LATER"><a class="task-title" href="https://tasks.google.com/task/dU1Yb043ZW02MjJSakhOeg?sa=6" target="_blank" rel="noopener">Inbox : Premises sizes K26 and service charges from KUNZ Johannes<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge upcoming">10 May</span><span class="list-tag">LATER</span><a class="open-link" href="https://tasks.google.com/task/dU1Yb043ZW02MjJSakhOeg?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div></div>
+<div class="task" data-status="upcoming" data-list="LATER"><a class="task-title" href="https://tasks.google.com/task/dGlUTWhlaXNNUHdQanFsXw?sa=6" target="_blank" rel="noopener">Inbox : FW: Faktura 5424 from Magnus, Mads @ København K<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge upcoming">10 May</span><span class="list-tag">LATER</span><a class="open-link" href="https://tasks.google.com/task/dGlUTWhlaXNNUHdQanFsXw?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div></div>
+<div class="task" data-status="upcoming" data-list="LATER"><a class="task-title" href="https://tasks.google.com/task/Q0JjR1AxbmNSSkozSnBVVg?sa=6" target="_blank" rel="noopener">Upload memo confirming insurance premium paid once invoice is received and settled<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge upcoming">10 May</span><span class="list-tag">LATER</span><a class="open-link" href="https://tasks.google.com/task/Q0JjR1AxbmNSSkozSnBVVg?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div></div>
+<div class="task" data-status="upcoming" data-list="LATER"><a class="task-title" href="https://tasks.google.com/task/R1ZjZEZDZk12VlVMUWtCMQ?sa=6" target="_blank" rel="noopener">Initiate the Pitch Library: Gather the recent Savills pitch materials and the PM presentation to serve as the baseline for the new framework initiative you agreed to build.<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge upcoming">10 May</span><span class="list-tag">LATER</span><a class="open-link" href="https://tasks.google.com/task/R1ZjZEZDZk12VlVMUWtCMQ?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div></div>
+<div class="task" data-status="upcoming" data-list="LATER"><a class="task-title" href="https://tasks.google.com/task/ZnVicnd5V3gtODhWb18xOQ?sa=6" target="_blank" rel="noopener">Day Book 1st October : AXA Meeting - • Review the PMA and create a structured list of scope items to prepare for the client meeting<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge upcoming">10 May</span><span class="list-tag">LATER</span><a class="open-link" href="https://tasks.google.com/task/ZnVicnd5V3gtODhWb18xOQ?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div></div>
+<div class="task" data-status="upcoming" data-list="LATER"><a class="task-title" href="https://tasks.google.com/task/Mm93YVFtQnlkRXNEU0tCcw?sa=6" target="_blank" rel="noopener">Chase Jane with regard to the year wheel.<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge upcoming">10 May</span><span class="list-tag">LATER</span><a class="open-link" href="https://tasks.google.com/task/Mm93YVFtQnlkRXNEU0tCcw?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div></div>
+<div class="task" data-status="upcoming" data-list="LATER"><a class="task-title" href="https://tasks.google.com/task/QUpRYzF5SzVlY2JSMVpwMQ?sa=6" target="_blank" rel="noopener">Day Book 1st October : AXA Meeting - • Email Hamza to schedule a 30-minute clarification meeting for the week after Easter<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge upcoming">10 May</span><span class="list-tag">LATER</span><a class="open-link" href="https://tasks.google.com/task/QUpRYzF5SzVlY2JSMVpwMQ?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div></div>
+<div class="task" data-status="upcoming" data-list="LATER"><a class="task-title" href="https://tasks.google.com/task/blN3MUZpZ1RPdl9wVzhjNA?sa=6" target="_blank" rel="noopener">Provide updated Repairs &amp; Maintenance watch list closer to VDR opening and rename folder from Building Damages<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge upcoming">10 May</span><span class="list-tag">LATER</span><a class="open-link" href="https://tasks.google.com/task/blN3MUZpZ1RPdl9wVzhjNA?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div></div>
+<div class="task" data-status="upcoming" data-list="LATER"><a class="task-title" href="https://tasks.google.com/task/RWRBNzlpTm83WkgxNXlrSw?sa=6" target="_blank" rel="noopener">Inbox : FW: New colleague Klara - BNP Nordics from Brondt, Lars @ Copenhagen<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge upcoming">10 May</span><span class="list-tag">LATER</span><a class="open-link" href="https://tasks.google.com/task/RWRBNzlpTm83WkgxNXlrSw?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div></div>
+<div class="task" data-status="upcoming" data-list="LATER"><a class="task-title" href="https://tasks.google.com/task/ODNkbXh1czRQNm9FYWlwbg?sa=6" target="_blank" rel="noopener">Inbox : FW: Kystvejen 24 - 28 - AEW - Techem site visit - Utility consumption &amp; unit splitting from Porter, Nicholai @ Copenhagen<span class="open-icon">&#x2197;</span></a><div class="task-meta"><span class="badge upcoming">10 May</span><span class="list-tag">LATER</span><a class="open-link" href="https://tasks.google.com/task/ODNkbXh1czRQNm9FYWlwbg?sa=6" target="_blank" rel="noopener">Open in Tasks &#x2197;</a></div></div></div>
 </div>
 
-<div class="footer">Generated by GitHub Actions · Friday 10 April 2026 · 44 open tasks · Click any task to open in Google Tasks</div>
+<div class="footer">Generated by GitHub Actions · Friday 10 April 2026 · 43 open tasks · Click any task to open in Google Tasks</div>
 
 <script>
 let activeFilter = null;
-
 const FILTER_LABELS = {
-  overdue: '🔴 Overdue tasks only',
-  today:   '🟡 Due today only',
+  overdue: '&#x1F534; Overdue tasks only',
+  today:   '&#x1F7E1; Due today only',
   next:    'Next Actions only',
   waiting: 'Waiting tasks only',
 };
@@ -353,27 +320,18 @@ const FILTER_LABELS = {
 function applyFilter(filter) {
   if (activeFilter === filter) { clearFilter(); return; }
   activeFilter = filter;
-
-  // Update stat button styles
-  document.querySelectorAll('.stat').forEach(s => {
-    s.classList.remove('active','active-gold');
-  });
+  document.querySelectorAll('.stat').forEach(s => s.classList.remove('active','active-gold'));
   const el = document.getElementById('stat-' + filter);
   if (el) el.classList.add(filter === 'today' ? 'active-gold' : 'active');
-
-  // Show filter bar
   document.getElementById('filterBar').classList.add('visible');
-  document.getElementById('filterLabel').textContent = FILTER_LABELS[filter] || filter;
-
-  // Filter tasks
+  document.getElementById('filterLabel').innerHTML = FILTER_LABELS[filter] || filter;
   document.querySelectorAll('.task').forEach(task => {
-    const status = task.dataset.status;
-    const list   = task.dataset.list;
-    let show = false;
-    if (filter === 'overdue')  show = status === 'overdue';
-    if (filter === 'today')    show = status === 'today';
-    if (filter === 'next')     show = list === 'NEXT';
-    if (filter === 'waiting')  show = list === 'WAITING';
+    const show = (
+      (filter === 'overdue'  && task.dataset.status === 'overdue') ||
+      (filter === 'today'    && task.dataset.status === 'today')   ||
+      (filter === 'next'     && task.dataset.list   === 'NEXT')    ||
+      (filter === 'waiting'  && task.dataset.list   === 'WAITING')
+    );
     task.classList.toggle('hidden', !show);
   });
 }
