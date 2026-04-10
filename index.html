@@ -35,7 +35,10 @@ body { font-family: 'DM Sans', sans-serif; background: var(--paper); color: var(
 .col-count { font-size: .75rem; color: var(--muted); letter-spacing: 0; font-weight: 400; font-family: 'Playfair Display', serif; }
 .task { border-bottom: 1px solid var(--border); padding: 11px 0; }
 .task:last-child { border-bottom: none; }
-.task-title { font-size: .83rem; font-weight: 500; line-height: 1.45; color: var(--ink); margin-bottom: 5px; }
+a.task-title { font-size: .83rem; font-weight: 500; line-height: 1.45; color: var(--ink); margin-bottom: 5px; display: block; text-decoration: none; transition: color 0.15s; }
+a.task-title:hover { color: var(--accent); }
+a.task-title:hover .task-link-icon { opacity: 1; }
+.task-link-icon { font-size: .7rem; opacity: 0; color: var(--accent); transition: opacity 0.15s; margin-left: 3px; }
 .task-meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .badge { font-size: .56rem; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 600; padding: 2px 7px; border: 1px solid; display: inline-block; }
 .badge.overdue { color: var(--accent); border-color: var(--accent); background: rgba(200,80,42,.07); }
@@ -55,7 +58,6 @@ body { font-family: 'DM Sans', sans-serif; background: var(--paper); color: var(
 </style>
 </head>
 <body>
-
 <div class="masthead">
   <div>
     <h1>Daily Briefing</h1>
@@ -67,7 +69,6 @@ body { font-family: 'DM Sans', sans-serif; background: var(--paper); color: var(
     <div class="last-updated">Auto-generated at 06:00</div>
   </div>
 </div>
-
 <div class="stats-bar">
   <div class="stat red"><strong>24</strong><span>Overdue</span></div>
   <div class="stat gold"><strong>3</strong><span>Due Today</span></div>
@@ -75,11 +76,10 @@ body { font-family: 'DM Sans', sans-serif; background: var(--paper); color: var(
   <div class="stat"><strong>8</strong><span>Waiting</span></div>
   <div class="stat"><strong>44</strong><span>Total Open</span></div>
 </div>
-
 <div class="ai-strip">
   <div class="ai-label">✦ AI<br>Summary</div>
   <div>
-    <div class="ai-text">Good morning, Joseph. You have two items due today—the follow-up email to Isabella at Vestas and reviewing the FMD lease agreement regarding the heat pump—so those should be completed first. However, Lars Brondt's email on the Danish Property Valuations from your meeting is now two days overdue and likely needs an immediate response to avoid any client friction. You also have a backlog of overdue waiting items, notably the service charge reconciliation that was due end of March and several inbox threads stretching back weeks. My suggestion: after clearing today's deadlines and replying to Lars, block 30 minutes this afternoon to triage the oldest overdue items and either action them or formally chase the people you're waiting on.</div>
+    <div class="ai-text">Good morning, Joseph. You have two items due today—the follow-up email to Isabella at Vestas and the FMD lease review regarding the heat pump—so those need your attention first. Additionally, the property valuations email from Lars Brondt is now two days overdue and should be addressed this morning to avoid further delay. The service charge reconciliation marked as end of March is also overdue by ten days and may require a quick status check or escalation. I'd suggest blocking thirty minutes mid-morning to clear the two overdue items and the Vestas email in one focused push, which will free your afternoon for the Sydmarken invoice and any inbox triage.</div>
     <div class="ai-priority"><span class="priority-chip">1 · Inbox : RE: New Danish Property Valuations - from our m…</span>
 <span class="priority-chip">2 · Inbox : Re: K24L - Invoicing to ASR from KUNZ Johannes</span>
 <span class="priority-chip">3 · Finalise service charge reconciliation 2025 before end …</span>
@@ -87,12 +87,11 @@ body { font-family: 'DM Sans', sans-serif; background: var(--paper); color: var(
 <span class="priority-chip">5 · Inbox : Re: Sydmarken Asset Electricity Meter Mapping f…</span></div>
   </div>
 </div>
-
 <div class="columns">
   <div class="col" style="animation-delay:0.05s">
   <div class="col-head">🔴 Priority · Next &amp; Today<span class="col-count">32</span></div>
   <div class="task">
-  <div class="task-title">Sending follow up email to Isabella at Vestas</div>
+  <a class="task-title" href="https://tasks.google.com/task/y00aubBJzw06nvUr?sa=6" target="_blank" rel="noopener">Sending follow up email to Isabella at Vestas <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge today">Today</span>
     <span class="list-tag">NEXT</span>
@@ -100,7 +99,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--paper); color: var(
   
 </div>
 <div class="task">
-  <div class="task-title">Check fmd lease agreement with regard to the heat pump</div>
+  <a class="task-title" href="https://tasks.google.com/task/Ut8JrEEuhS0DDiqB?sa=6" target="_blank" rel="noopener">Check fmd lease agreement with regard to the heat pump <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge today">Today</span>
     <span class="list-tag">NEXT</span>
@@ -108,7 +107,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--paper); color: var(
   
 </div>
 <div class="task">
-  <div class="task-title">Inbox : RE: New Danish Property Valuations - from our meeting from Brondt, Lars @ Copenhagen</div>
+  <a class="task-title" href="https://tasks.google.com/task/f7rL9y4Yzd_xiv1I?sa=6" target="_blank" rel="noopener">Inbox : RE: New Danish Property Valuations - from our meeting from Brondt, Lars @ Copenhagen <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge overdue">Overdue</span>
     <span class="list-tag">NEXT</span>
@@ -123,7 +122,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--paper); color: var(
 I have updated the KAMs and Contact list, whi…</div>
 </div>
 <div class="task">
-  <div class="task-title">Inbox : Ferrosan - Open issues  from HERMETZ Jean-Paul</div>
+  <a class="task-title" href="https://tasks.google.com/task/-9om4dbyZmtTUkcc?sa=6" target="_blank" rel="noopener">Inbox : Ferrosan - Open issues  from HERMETZ Jean-Paul <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge no-date">—</span>
     <span class="list-tag">NEXT</span>
@@ -138,7 +137,7 @@ Dear property team,
 Please find attached the latest memo sent to Ferrosan on 2…</div>
 </div>
 <div class="task">
-  <div class="task-title">Day Book 1st October : Property Tax-re-valuations. Crm: - [High] Update (KAMs) the Excel property overview with correct fund manager contact info and additional relevant client contacts [suggested: 20</div>
+  <a class="task-title" href="https://tasks.google.com/task/2z1iFTlQ2KdK8y4N?sa=6" target="_blank" rel="noopener">Day Book 1st October : Property Tax-re-valuations. Crm: - [High] Update (KAMs) the Excel property overview with correct fund manager contact info and additional relevant client contacts [suggested: 20 <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge no-date">—</span>
     <span class="list-tag">NEXT</span>
@@ -146,7 +145,7 @@ Please find attached the latest memo sent to Ferrosan on 2…</div>
   <div class="task-note">http://plxy.co/Fdxq3QnIRTxG</div>
 </div>
 <div class="task">
-  <div class="task-title">Day Book 1st October : 3:55 PM - [High] Schedule a follow-up meeting with Johannes for to review technical management quality, invoicing process, and overall cooperation (Jane / Joseph) [suggested: 20</div>
+  <a class="task-title" href="https://tasks.google.com/task/y7FNK8SpqpakEgqS?sa=6" target="_blank" rel="noopener">Day Book 1st October : 3:55 PM - [High] Schedule a follow-up meeting with Johannes for to review technical management quality, invoicing process, and overall cooperation (Jane / Joseph) [suggested: 20 <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge upcoming">1 May</span>
     <span class="list-tag">NEXT</span>
@@ -154,7 +153,7 @@ Please find attached the latest memo sent to Ferrosan on 2…</div>
   <div class="task-note">http://plxy.co/POmwKJCu6RnD</div>
 </div>
 <div class="task">
-  <div class="task-title">Inbox : FW: Strenghtening Key Account Management in Denmark from Brondt, Lars @ Copenhagen</div>
+  <a class="task-title" href="https://tasks.google.com/task/DqdrjD9CE9htGqee?sa=6" target="_blank" rel="noopener">Inbox : FW: Strenghtening Key Account Management in Denmark from Brondt, Lars @ Copenhagen <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge no-date">—</span>
     <span class="list-tag">NEXT</span>
@@ -169,7 +168,7 @@ Please find attached the latest memo sent to Ferrosan on 2…</div>
 FYI please check the SharePoint si…</div>
 </div>
 <div class="task">
-  <div class="task-title">Inbox : Kastrup - Open rents / service charges from KUNZ Johannes</div>
+  <a class="task-title" href="https://tasks.google.com/task/4lWAYh2ZBgTQgKXi?sa=6" target="_blank" rel="noopener">Inbox : Kastrup - Open rents / service charges from KUNZ Johannes <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge no-date">—</span>
     <span class="list-tag">NEXT</span>
@@ -186,7 +185,7 @@ Hi Joseph,
 can you please give me a bit more detailled feedback on the open r…</div>
 </div>
 <div class="task">
-  <div class="task-title">Inbox : Re: K24L - Invoicing to ASR from KUNZ Johannes</div>
+  <a class="task-title" href="https://tasks.google.com/task/QTd6oqEgrr1M7fqp?sa=6" target="_blank" rel="noopener">Inbox : Re: K24L - Invoicing to ASR from KUNZ Johannes <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge overdue">Overdue</span>
     <span class="list-tag">NEXT</span>
@@ -202,7 +201,7 @@ Hi Peter,
 thanks can you please send the cost…</div>
 </div>
 <div class="task">
-  <div class="task-title">Finalise service charge reconciliation 2025 before end of March *(CBRE – End of March 2026)*</div>
+  <a class="task-title" href="https://tasks.google.com/task/VSiM25wL0e4BbFZ5?sa=6" target="_blank" rel="noopener">Finalise service charge reconciliation 2025 before end of March *(CBRE – End of March 2026)* <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge overdue">Overdue</span>
     <span class="list-tag">WAITING</span>
@@ -210,7 +209,7 @@ thanks can you please send the cost…</div>
   <div class="task-note">Created in &quot;Meeting Summary – Sydmarken 5 Outstanding Documents&quot; ([Web](https://app.capacities.io/10c9c889-ec88-491c-bfa…</div>
 </div>
 <div class="task">
-  <div class="task-title">Inbox : RE: Offboarding - Kornmarksvej 15 from Gancza-Sadowa, Izabela @ Copenhagen</div>
+  <a class="task-title" href="https://tasks.google.com/task/sYShfN6yVcnxE0H4?sa=6" target="_blank" rel="noopener">Inbox : RE: Offboarding - Kornmarksvej 15 from Gancza-Sadowa, Izabela @ Copenhagen <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge overdue">Overdue</span>
     <span class="list-tag">WAITING</span>
@@ -225,7 +224,7 @@ thanks can you please send the cost…</div>
 I have identified the below tasks to be done a…</div>
 </div>
 <div class="task">
-  <div class="task-title">Inbox : Re: Sydmarken Asset Electricity Meter Mapping from HERMETZ Jean-Paul</div>
+  <a class="task-title" href="https://tasks.google.com/task/IkGL7ZvjXF-QyL0D?sa=6" target="_blank" rel="noopener">Inbox : Re: Sydmarken Asset Electricity Meter Mapping from HERMETZ Jean-Paul <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge overdue">Overdue</span>
     <span class="list-tag">WAITING</span>
@@ -240,7 +239,7 @@ I have identified the below tasks to be done a…</div>
 Joseph, NicolaiHave you progressed on the rec…</div>
 </div>
 <div class="task">
-  <div class="task-title">Inbox : FW: GRESB data collection EUROCORE from VEDDER Stefanie</div>
+  <a class="task-title" href="https://tasks.google.com/task/r-J6xoXmfGeCA3e3?sa=6" target="_blank" rel="noopener">Inbox : FW: GRESB data collection EUROCORE from VEDDER Stefanie <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge overdue">Overdue</span>
     <span class="list-tag">WAITING</span>
@@ -259,7 +258,7 @@ Dear Martin, dear Joseph,
 Please find atta…</div>
 </div>
 <div class="task">
-  <div class="task-title">Inbox : M&amp;G workshop Finland - summary from Ruigendijk, Krista @ Helsinki</div>
+  <a class="task-title" href="https://tasks.google.com/task/pHEukATb-dZcsor6?sa=6" target="_blank" rel="noopener">Inbox : M&amp;G workshop Finland - summary from Ruigendijk, Krista @ Helsinki <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge overdue">Overdue</span>
     <span class="list-tag">WAITING</span>
@@ -272,7 +271,7 @@ Dear M&amp;G Nordic team!
 It was great to see all of you in Finland this week. I hope you fou…</div>
 </div>
 <div class="task">
-  <div class="task-title">Inbox : FW: Pre-payment budget 2026 dialog  from Jeppe Bak Andreasen</div>
+  <a class="task-title" href="https://tasks.google.com/task/HZO7R3gPl2J-IJTD?sa=6" target="_blank" rel="noopener">Inbox : FW: Pre-payment budget 2026 dialog  from Jeppe Bak Andreasen <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge overdue">Overdue</span>
     <span class="list-tag">WAITING</span>
@@ -291,7 +290,7 @@ Dear Joseph
 Thank you for sharing the upd…</div>
 </div>
 <div class="task">
-  <div class="task-title">Inbox : Fwd: EELVF IV Denmark G2 S.a.r.l - Mail handling from Bart Ligter</div>
+  <a class="task-title" href="https://tasks.google.com/task/JZLWSGWJGFLATHTF?sa=6" target="_blank" rel="noopener">Inbox : Fwd: EELVF IV Denmark G2 S.a.r.l - Mail handling from Bart Ligter <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge overdue">Overdue</span>
     <span class="list-tag">WAITING</span>
@@ -307,7 +306,7 @@ Hi Joseph &amp; Peter,
 Could you please take the …</div>
 </div>
 <div class="task">
-  <div class="task-title">Inbox : RE: EQT Tenancy Schedule 2026 / fee approval from Rosen, Carl Nikolaj @ Copenhagen</div>
+  <a class="task-title" href="https://tasks.google.com/task/S5C0soL0EnXPiKiP?sa=6" target="_blank" rel="noopener">Inbox : RE: EQT Tenancy Schedule 2026 / fee approval from Rosen, Carl Nikolaj @ Copenhagen <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge overdue">Overdue</span>
     <span class="list-tag">THIS WEEK</span>
@@ -322,7 +321,7 @@ Could you please take the …</div>
 Could you please inform client/request appr…</div>
 </div>
 <div class="task">
-  <div class="task-title">Day Book 1st October : Sydmarken Information Request Invoice - Put together invoice for EWA for Sydmarken additional work</div>
+  <a class="task-title" href="https://tasks.google.com/task/hfznnJjqXOAzvHBu?sa=6" target="_blank" rel="noopener">Day Book 1st October : Sydmarken Information Request Invoice - Put together invoice for EWA for Sydmarken additional work <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge today">Today</span>
     <span class="list-tag">THIS WEEK</span>
@@ -330,7 +329,7 @@ Could you please inform client/request appr…</div>
   <div class="task-note">http://plxy.co/RlKwPTrgdkge</div>
 </div>
 <div class="task">
-  <div class="task-title">Inbox : New Danish Property Valuations - from our meeting from Grundahl, Emil @ Copenhagen</div>
+  <a class="task-title" href="https://tasks.google.com/task/7UJkwXXYQjQpCbFS?sa=6" target="_blank" rel="noopener">Inbox : New Danish Property Valuations - from our meeting from Grundahl, Emil @ Copenhagen <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge overdue">Overdue</span>
     <span class="list-tag">THIS WEEK</span>
@@ -344,7 +343,7 @@ In connection with the new Danish property valuation system and the upcoming
 i…</div>
 </div>
 <div class="task">
-  <div class="task-title">Inbox : Re: Faktura/Invoice (202600000070) from Weiqi Zhang</div>
+  <a class="task-title" href="https://tasks.google.com/task/NWZyARK9Wzv-0-Dy?sa=6" target="_blank" rel="noopener">Inbox : Re: Faktura/Invoice (202600000070) from Weiqi Zhang <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge overdue">Overdue</span>
     <span class="list-tag">THIS WEEK</span>
@@ -358,7 +357,7 @@ Hi Joseph,
 My colleague Miya in our financial department has some questions abou…</div>
 </div>
 <div class="task">
-  <div class="task-title">Get the 2026 Budget Setup on Yardi</div>
+  <a class="task-title" href="https://tasks.google.com/task/_a-8LVkRSzOz6sM5?sa=6" target="_blank" rel="noopener">Get the 2026 Budget Setup on Yardi <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge overdue">Overdue</span>
     <span class="list-tag">THIS WEEK</span>
@@ -366,7 +365,7 @@ My colleague Miya in our financial department has some questions abou…</div>
   
 </div>
 <div class="task">
-  <div class="task-title">Inbox : FW: Draft Lease Agreement - Management Office Building N from VEDDER Stefanie</div>
+  <a class="task-title" href="https://tasks.google.com/task/J2e1DPeSy9FMLUzN?sa=6" target="_blank" rel="noopener">Inbox : FW: Draft Lease Agreement - Management Office Building N from VEDDER Stefanie <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge overdue">Overdue</span>
     <span class="list-tag">THIS WEEK</span>
@@ -385,7 +384,7 @@ Hallo Joseph,
 Please find the reviewed com…</div>
 </div>
 <div class="task">
-  <div class="task-title">Continue preparing memo on works carried out (3.5) with project manager *(CBRE Technical)*</div>
+  <a class="task-title" href="https://tasks.google.com/task/JnNgOAR9aJqzauBV?sa=6" target="_blank" rel="noopener">Continue preparing memo on works carried out (3.5) with project manager *(CBRE Technical)* <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge overdue">Overdue</span>
     <span class="list-tag">THIS WEEK</span>
@@ -393,7 +392,7 @@ Please find the reviewed com…</div>
   <div class="task-note">Created in &quot;Meeting Summary – Sydmarken 5 Outstanding Documents&quot; ([Web](https://app.capacities.io/10c9c889-ec88-491c-bfa…</div>
 </div>
 <div class="task">
-  <div class="task-title">Chase Martin for update on municipality response re: building permits (3.1) and occupancy permits (3.3) *(Joseph – Today)*</div>
+  <a class="task-title" href="https://tasks.google.com/task/eUWeQbcHF7EDjpIW?sa=6" target="_blank" rel="noopener">Chase Martin for update on municipality response re: building permits (3.1) and occupancy permits (3.3) *(Joseph – Today)* <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge overdue">Overdue</span>
     <span class="list-tag">THIS WEEK</span>
@@ -401,7 +400,7 @@ Please find the reviewed com…</div>
   <div class="task-note">Created in &quot;Meeting Summary – Sydmarken 5 Outstanding Documents&quot; ([Web](https://app.capacities.io/10c9c889-ec88-491c-bfa…</div>
 </div>
 <div class="task">
-  <div class="task-title">Inbox : FW: Kystvejen 24 - 28 - AEW - Techem site visit - Utility consumption &amp; unit splitting from Porter, Nicholai @ Copenhagen</div>
+  <a class="task-title" href="https://tasks.google.com/task/83dmxus4P6oEaipn?sa=6" target="_blank" rel="noopener">Inbox : FW: Kystvejen 24 - 28 - AEW - Techem site visit - Utility consumption &amp; unit splitting from Porter, Nicholai @ Copenhagen <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge overdue">Overdue</span>
     <span class="list-tag">LATER</span>
@@ -412,7 +411,7 @@ Please find the reviewed com…</div>
  Could you assist Techem with the below information on Kys…</div>
 </div>
 <div class="task">
-  <div class="task-title">Chase Jane with regard to the year wheel.</div>
+  <a class="task-title" href="https://tasks.google.com/task/2owaQmBydEsDSKBs?sa=6" target="_blank" rel="noopener">Chase Jane with regard to the year wheel. <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge overdue">Overdue</span>
     <span class="list-tag">LATER</span>
@@ -420,7 +419,7 @@ Please find the reviewed com…</div>
   
 </div>
 <div class="task">
-  <div class="task-title">Inbox : FW: New colleague Klara - BNP Nordics from Brondt, Lars @ Copenhagen</div>
+  <a class="task-title" href="https://tasks.google.com/task/EdA79iNo7ZH15ykK?sa=6" target="_blank" rel="noopener">Inbox : FW: New colleague Klara - BNP Nordics from Brondt, Lars @ Copenhagen <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge overdue">Overdue</span>
     <span class="list-tag">LATER</span>
@@ -443,7 +442,7 @@ Med venlig hilsen/Best regards,
 Lars Brondt…</div>
 </div>
 <div class="task">
-  <div class="task-title">**Initiate the Pitch Library:** Gather the recent Savills pitch materials and the PM presentation to serve as the baseline for the new framework initiative you agreed to build.</div>
+  <a class="task-title" href="https://tasks.google.com/task/GVcdFCfMvVULQkB1?sa=6" target="_blank" rel="noopener">**Initiate the Pitch Library:** Gather the recent Savills pitch materials and the PM presentation to serve as the baseline for the new framework initiative you agreed to build. <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge overdue">Overdue</span>
     <span class="list-tag">LATER</span>
@@ -451,7 +450,7 @@ Lars Brondt…</div>
   <div class="task-note">Created in &quot;1:1 Meeting Summary — Mar 9&quot; ([Web](https://app.capacities.io/10c9c889-ec88-491c-bfa6-918773e06609/077c21a4-…</div>
 </div>
 <div class="task">
-  <div class="task-title">Upload memo confirming insurance premium paid once invoice is received and settled *(Jean-Paul / CBRE)*</div>
+  <a class="task-title" href="https://tasks.google.com/task/CBcGP1ncRJJ3JpUV?sa=6" target="_blank" rel="noopener">Upload memo confirming insurance premium paid once invoice is received and settled *(Jean-Paul / CBRE)* <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge overdue">Overdue</span>
     <span class="list-tag">LATER</span>
@@ -459,7 +458,7 @@ Lars Brondt…</div>
   <div class="task-note">Created in &quot;Meeting Summary – Sydmarken 5 Outstanding Documents&quot; ([Web](https://app.capacities.io/10c9c889-ec88-491c-bfa…</div>
 </div>
 <div class="task">
-  <div class="task-title">Inbox : Premises sizes K26 and service charges from KUNZ Johannes</div>
+  <a class="task-title" href="https://tasks.google.com/task/uMXoN7em622RjHNz?sa=6" target="_blank" rel="noopener">Inbox : Premises sizes K26 and service charges from KUNZ Johannes <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge overdue">Overdue</span>
     <span class="list-tag">LATER</span>
@@ -476,7 +475,7 @@ Hi Joseph,
 can you please send me the overview of PostNord’s premises which i…</div>
 </div>
 <div class="task">
-  <div class="task-title">Provide updated Repairs &amp; Maintenance watch list closer to VDR opening and rename folder from &quot;Building Damages&quot; *(Joseph / CBRE)*</div>
+  <a class="task-title" href="https://tasks.google.com/task/nSw1FigTOv_pW8c4?sa=6" target="_blank" rel="noopener">Provide updated Repairs &amp; Maintenance watch list closer to VDR opening and rename folder from &quot;Building Damages&quot; *(Joseph / CBRE)* <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge overdue">Overdue</span>
     <span class="list-tag">LATER</span>
@@ -484,7 +483,7 @@ can you please send me the overview of PostNord’s premises which i…</div>
   <div class="task-note">Created in &quot;Meeting Summary – Sydmarken 5 Outstanding Documents&quot; ([Web](https://app.capacities.io/10c9c889-ec88-491c-bfa…</div>
 </div>
 <div class="task">
-  <div class="task-title">Inbox : FW: Faktura 5424 from Magnus, Mads @ København K</div>
+  <a class="task-title" href="https://tasks.google.com/task/tiTMheisMPwPjql_?sa=6" target="_blank" rel="noopener">Inbox : FW: Faktura 5424 from Magnus, Mads @ København K <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge overdue">Overdue</span>
     <span class="list-tag">LATER</span>
@@ -500,7 +499,7 @@ I became aware of the problem with the invoice…</div>
   <div class="col" style="animation-delay:0.15s">
   <div class="col-head">📅 This Week<span class="col-count">6</span></div>
   <div class="task">
-  <div class="task-title">Day Book 1st October : Property Tax-re-valuations. Crm: - [Medium] Reach out (Lars/Joseph) to the airport on behalf of AEW clients to flag the valuation process and offer referral to Thomas if needed</div>
+  <a class="task-title" href="https://tasks.google.com/task/sPzHrqdhiQIZlBty?sa=6" target="_blank" rel="noopener">Day Book 1st October : Property Tax-re-valuations. Crm: - [Medium] Reach out (Lars/Joseph) to the airport on behalf of AEW clients to flag the valuation process and offer referral to Thomas if needed <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge no-date">—</span>
     <span class="list-tag">THIS WEEK</span>
@@ -508,7 +507,7 @@ I became aware of the problem with the invoice…</div>
   <div class="task-note">http://plxy.co/Fdxq3QnIRTxG</div>
 </div>
 <div class="task">
-  <div class="task-title">Day Book 1st October : Property Tax-re-valuations. Crm: - [Medium] Archive (all KAMs) sent outreach emails in the new &quot;Valuations&quot; SharePoint folder for audit/liability purposes [suggested: 2026-04-14</div>
+  <a class="task-title" href="https://tasks.google.com/task/EKw-iU2VoHZWd8H0?sa=6" target="_blank" rel="noopener">Day Book 1st October : Property Tax-re-valuations. Crm: - [Medium] Archive (all KAMs) sent outreach emails in the new &quot;Valuations&quot; SharePoint folder for audit/liability purposes [suggested: 2026-04-14 <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge no-date">—</span>
     <span class="list-tag">THIS WEEK</span>
@@ -516,7 +515,7 @@ I became aware of the problem with the invoice…</div>
   <div class="task-note">http://plxy.co/Fdxq3QnIRTxG</div>
 </div>
 <div class="task">
-  <div class="task-title">Day Book 1st October : Property Tax-re-valuations. Crm: - [Low] Update (Lars) the property overview to note that AEW Kusfai / airport asset does not require standard client email send [suggested: 2026</div>
+  <a class="task-title" href="https://tasks.google.com/task/fmsk-S6OoNrnqsBD?sa=6" target="_blank" rel="noopener">Day Book 1st October : Property Tax-re-valuations. Crm: - [Low] Update (Lars) the property overview to note that AEW Kusfai / airport asset does not require standard client email send [suggested: 2026 <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge no-date">—</span>
     <span class="list-tag">THIS WEEK</span>
@@ -524,7 +523,7 @@ I became aware of the problem with the invoice…</div>
   <div class="task-note">http://plxy.co/Fdxq3QnIRTxG</div>
 </div>
 <div class="task">
-  <div class="task-title">Day Book 1st October : 3:55 PM - [Medium] Review and map the current CapEx invoice approval workflow in Yardi, including whether Rene's approval step should be removed or restructured (Jane Lorenzon)</div>
+  <a class="task-title" href="https://tasks.google.com/task/t486EzYkg1nCHuDn?sa=6" target="_blank" rel="noopener">Day Book 1st October : 3:55 PM - [Medium] Review and map the current CapEx invoice approval workflow in Yardi, including whether Rene's approval step should be removed or restructured (Jane Lorenzon) <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge no-date">—</span>
     <span class="list-tag">THIS WEEK</span>
@@ -532,7 +531,7 @@ I became aware of the problem with the invoice…</div>
   <div class="task-note">http://plxy.co/POmwKJCu6RnD</div>
 </div>
 <div class="task">
-  <div class="task-title">Day Book 1st October : 3:55 PM - [Medium] Invite Jane Lorenzon to the next on-site visit at Kystvejen, coordinated around the ASR fit-out handover (~8 May) (Joseph) [suggested: 2026-04-15]</div>
+  <a class="task-title" href="https://tasks.google.com/task/VoD9emaZtSHfOPfT?sa=6" target="_blank" rel="noopener">Day Book 1st October : 3:55 PM - [Medium] Invite Jane Lorenzon to the next on-site visit at Kystvejen, coordinated around the ASR fit-out handover (~8 May) (Joseph) [suggested: 2026-04-15] <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge no-date">—</span>
     <span class="list-tag">THIS WEEK</span>
@@ -540,7 +539,7 @@ I became aware of the problem with the invoice…</div>
   <div class="task-note">http://plxy.co/POmwKJCu6RnD</div>
 </div>
 <div class="task">
-  <div class="task-title">Day Book 1st October : 3:55 PM - [Medium] Confirm and standardise the technical recommendation template in use – ensure alignment between the AIW-approved Word format and what CBRE is currently submit</div>
+  <a class="task-title" href="https://tasks.google.com/task/miBeURWO-O5df3NF?sa=6" target="_blank" rel="noopener">Day Book 1st October : 3:55 PM - [Medium] Confirm and standardise the technical recommendation template in use – ensure alignment between the AIW-approved Word format and what CBRE is currently submit <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge no-date">—</span>
     <span class="list-tag">THIS WEEK</span>
@@ -551,7 +550,7 @@ I became aware of the problem with the invoice…</div>
   <div class="col" style="animation-delay:0.25s">
   <div class="col-head">📂 Waiting · Inbox · Meeting Prep<span class="col-count">6</span></div>
   <div class="task">
-  <div class="task-title">Start applying for residency</div>
+  <a class="task-title" href="https://tasks.google.com/task/PKqhTXZB4O2h4Ez-?sa=6" target="_blank" rel="noopener">Start applying for residency <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge no-date">—</span>
     <span class="list-tag">Inbox</span>
@@ -559,7 +558,7 @@ I became aware of the problem with the invoice…</div>
   
 </div>
 <div class="task">
-  <div class="task-title">Day Book 1st October : SERVICE CHARGE RECONCILIATION 2025 - 5. [Open] Retrieve Sep/Oct 2024 tenant email re: on-account increases and share with Stephanie Owner: Joseph</div>
+  <a class="task-title" href="https://tasks.google.com/task/JX8f6Q1VFwJ5vEle?sa=6" target="_blank" rel="noopener">Day Book 1st October : SERVICE CHARGE RECONCILIATION 2025 - 5. [Open] Retrieve Sep/Oct 2024 tenant email re: on-account increases and share with Stephanie Owner: Joseph <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge no-date">—</span>
     <span class="list-tag">WAITING</span>
@@ -567,7 +566,7 @@ I became aware of the problem with the invoice…</div>
   <div class="task-note">http://plxy.co/ED8uBCnWQwCo</div>
 </div>
 <div class="task">
-  <div class="task-title">Day Book 1st October : AXA Meeting - • Align with Maunas (Finland) regarding client expectations before the call with Hamza - Speaker B (Joseph) - Before the meeting with Hamza</div>
+  <a class="task-title" href="https://tasks.google.com/task/ja6TZWZ5pHecCmK5?sa=6" target="_blank" rel="noopener">Day Book 1st October : AXA Meeting - • Align with Maunas (Finland) regarding client expectations before the call with Hamza - Speaker B (Joseph) - Before the meeting with Hamza <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge no-date">—</span>
     <span class="list-tag">MEETING PREP</span>
@@ -575,7 +574,7 @@ I became aware of the problem with the invoice…</div>
   <div class="task-note">http://plxy.co/zfhTx6eBZElX</div>
 </div>
 <div class="task">
-  <div class="task-title">Day Book 1st October : AXA Meeting - • Email Hamza to schedule a 30-minute clarification meeting for the week after Easter - Speaker B (Joseph) - End of this week</div>
+  <a class="task-title" href="https://tasks.google.com/task/AJQc1yK5ecbR1Zp1?sa=6" target="_blank" rel="noopener">Day Book 1st October : AXA Meeting - • Email Hamza to schedule a 30-minute clarification meeting for the week after Easter - Speaker B (Joseph) - End of this week <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge upcoming">14 Apr</span>
     <span class="list-tag">LATER</span>
@@ -583,7 +582,7 @@ I became aware of the problem with the invoice…</div>
   <div class="task-note">http://plxy.co/zfhTx6eBZElX</div>
 </div>
 <div class="task">
-  <div class="task-title">Day Book 1st October : AXA Meeting - • Review the PMA and create a structured list of scope items to prepare for the client meeting - Speaker B (Joseph) - Before the meeting with Hamza</div>
+  <a class="task-title" href="https://tasks.google.com/task/fubrwyWx-88Vo_19?sa=6" target="_blank" rel="noopener">Day Book 1st October : AXA Meeting - • Review the PMA and create a structured list of scope items to prepare for the client meeting - Speaker B (Joseph) - Before the meeting with Hamza <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge upcoming">14 Apr</span>
     <span class="list-tag">LATER</span>
@@ -591,7 +590,7 @@ I became aware of the problem with the invoice…</div>
   <div class="task-note">http://plxy.co/zfhTx6eBZElX</div>
 </div>
 <div class="task">
-  <div class="task-title">Day Book 1st October : Property Tax-re-valuations. Crm: - [Medium] Inform (Joseph) Johannes about the airport/AEW Kusfai situation before his next quarterly airport meeting [suggested: 2026-03-28]</div>
+  <a class="task-title" href="https://tasks.google.com/task/bL0FuLoioBAWJtmA?sa=6" target="_blank" rel="noopener">Day Book 1st October : Property Tax-re-valuations. Crm: - [Medium] Inform (Joseph) Johannes about the airport/AEW Kusfai situation before his next quarterly airport meeting [suggested: 2026-03-28] <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge no-date">—</span>
     <span class="list-tag">LATER</span>
@@ -600,8 +599,6 @@ I became aware of the problem with the invoice…</div>
 </div>
 </div>
 </div>
-
-<div class="footer">Generated by GitHub Actions · Friday 10 April 2026 · 44 open tasks</div>
-
+<div class="footer">Generated by GitHub Actions · Friday 10 April 2026 · 44 open tasks · Click any task to open in Google Tasks</div>
 </body>
 </html>
