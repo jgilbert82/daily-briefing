@@ -5,7 +5,6 @@ and writes index.html for the Daily Briefing GitHub Pages site.
 
 import os
 import json
-import base64
 from datetime import date, datetime
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
@@ -25,8 +24,7 @@ TASK_LISTS = [
 # ── GOOGLE TASKS ──────────────────────────────────────────────────────────────
 
 def get_tasks_service():
-    creds_json = os.environ["GOOGLE_CREDENTIALS_JSON"]
-    creds_data = json.loads(creds_json)
+    creds_data = json.loads(os.environ["GOOGLE_CREDENTIALS_JSON"])
     creds = Credentials(
         token=creds_data["token"],
         refresh_token=creds_data["refresh_token"],
@@ -52,13 +50,24 @@ def fetch_all_tasks():
             for t in result.get("items", []):
                 if t.get("status") == "completed":
                     continue
-                due_raw = t.get("due")  # RFC 3339 e.g. 2026-04-10T00:00:00.000Z
+                due_raw = t.get("due")
                 due_str = due_raw[:10] if due_raw else None
+
+                # Build a direct Google Tasks web link
+                task_id = t.get("id", "")
+                list_id = lst["id"]
+                # selfLink format from the API
+                web_link = t.get("webViewLink") or \
+                    f"https://tasks.google.com/tasks/search?q={task_id}"
+
                 all_tasks.append({
                     "title": t.get("title", "").strip(),
                     "list":  lst["name"],
                     "due":   due_str,
                     "note":  (t.get("notes") or "").strip()[:200] or None,
+                    "link":  web_link,
+                    "task_id": task_id,
+                    "list_id": list_id,
                 })
         except Exception as e:
             print(f"Warning: could not fetch {lst['name']}: {e}")
@@ -90,51 +99,59 @@ def generate_summary(tasks):
 
 
 def extract_priorities(tasks, today_str):
-    """Return up to 5 priority chips: overdue first, then today, then NEXT."""
     overdue = [t for t in tasks if t["due"] and t["due"] < today_str]
     today   = [t for t in tasks if t["due"] == today_str]
     nxt     = [t for t in tasks if t["list"] == "NEXT" and not t["due"]]
-    picks = (overdue + today + nxt)[:5]
-    labels = []
+    picks   = (overdue + today + nxt)[:5]
+    labels  = []
     for i, t in enumerate(picks, 1):
         short = t["title"][:55] + ("…" if len(t["title"]) > 55 else "")
         labels.append(f"{i} · {short}")
     return labels
 
 
-# ── HTML GENERATION ───────────────────────────────────────────────────────────
+# ── HTML HELPERS ──────────────────────────────────────────────────────────────
 
 def classify_date(due, today_str):
-    if not due:
-        return "no-date"
-    if due < today_str:
-        return "overdue"
-    if due == today_str:
-        return "today"
+    if not due:       return "no-date"
+    if due < today_str: return "overdue"
+    if due == today_str: return "today"
     return "upcoming"
 
 
 def fmt_date(due):
-    d = datetime.strptime(due, "%Y-%m-%d")
-    return d.strftime("%-d %b")
+    return datetime.strptime(due, "%Y-%m-%d").strftime("%-d %b")
 
 
 def badge_label(cls, due):
-    if cls == "overdue":  return "Overdue"
-    if cls == "today":    return "Today"
-    if cls == "upcoming": return fmt_date(due)
+    if cls == "overdue":   return "Overdue"
+    if cls == "today":     return "Today"
+    if cls == "upcoming":  return fmt_date(due)
     return "—"
 
 
 def esc(s):
-    return (s or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+    return (s or "").replace("&","&amp;").replace("<","&lt;").replace(">","&gt;").replace('"',"&quot;")
+
+
+def make_task_url(task_id, list_id):
+    """
+    Construct the Google Tasks web app deep link.
+    Format: https://tasks.google.com/tasks/search opens search,
+    but the direct task URL uses the tasks.google.com UI format.
+    """
+    return f"https://tasks.google.com/task/{task_id}?sa=6"
 
 
 def render_task(t, today_str):
     cls   = classify_date(t["due"], today_str)
     note  = f'<div class="task-note">{esc((t["note"] or "")[:120])}{"…" if t["note"] and len(t["note"]) > 120 else ""}</div>' if t["note"] else ""
+
+    # Build the link - use webViewLink if available, otherwise construct it
+    task_url = t.get("link") or make_task_url(t.get("task_id",""), t.get("list_id",""))
+
     return f"""<div class="task">
-  <div class="task-title">{esc(t['title'])}</div>
+  <a class="task-title" href="{esc(task_url)}" target="_blank" rel="noopener">{esc(t['title'])} <span class="task-link-icon">↗</span></a>
   <div class="task-meta">
     <span class="badge {cls}">{badge_label(cls, t['due'])}</span>
     <span class="list-tag">{esc(t['list'])}</span>
@@ -152,6 +169,8 @@ def render_col(title, tasks, today_str, delay):
 </div>"""
 
 
+# ── HTML BUILD ────────────────────────────────────────────────────────────────
+
 def build_html(tasks, summary, priorities, today_str):
     overdue_count = sum(1 for t in tasks if classify_date(t["due"], today_str) == "overdue")
     today_count   = sum(1 for t in tasks if classify_date(t["due"], today_str) == "today")
@@ -166,8 +185,7 @@ def build_html(tasks, summary, priorities, today_str):
     col3_tasks = [t for t in tasks if id(t) not in seen]
 
     priority_chips = "\n".join(f'<span class="priority-chip">{esc(p)}</span>' for p in priorities)
-
-    today_display = datetime.strptime(today_str, "%Y-%m-%d").strftime("%A %-d %B %Y")
+    today_display  = datetime.strptime(today_str, "%Y-%m-%d").strftime("%A %-d %B %Y")
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -206,7 +224,10 @@ body {{ font-family: 'DM Sans', sans-serif; background: var(--paper); color: var
 .col-count {{ font-size: .75rem; color: var(--muted); letter-spacing: 0; font-weight: 400; font-family: 'Playfair Display', serif; }}
 .task {{ border-bottom: 1px solid var(--border); padding: 11px 0; }}
 .task:last-child {{ border-bottom: none; }}
-.task-title {{ font-size: .83rem; font-weight: 500; line-height: 1.45; color: var(--ink); margin-bottom: 5px; }}
+a.task-title {{ font-size: .83rem; font-weight: 500; line-height: 1.45; color: var(--ink); margin-bottom: 5px; display: block; text-decoration: none; transition: color 0.15s; }}
+a.task-title:hover {{ color: var(--accent); }}
+a.task-title:hover .task-link-icon {{ opacity: 1; }}
+.task-link-icon {{ font-size: .7rem; opacity: 0; color: var(--accent); transition: opacity 0.15s; margin-left: 3px; }}
 .task-meta {{ display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }}
 .badge {{ font-size: .56rem; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 600; padding: 2px 7px; border: 1px solid; display: inline-block; }}
 .badge.overdue {{ color: var(--accent); border-color: var(--accent); background: rgba(200,80,42,.07); }}
@@ -226,7 +247,6 @@ body {{ font-family: 'DM Sans', sans-serif; background: var(--paper); color: var
 </style>
 </head>
 <body>
-
 <div class="masthead">
   <div>
     <h1>Daily Briefing</h1>
@@ -238,7 +258,6 @@ body {{ font-family: 'DM Sans', sans-serif; background: var(--paper); color: var
     <div class="last-updated">Auto-generated at 06:00</div>
   </div>
 </div>
-
 <div class="stats-bar">
   <div class="stat red"><strong>{overdue_count}</strong><span>Overdue</span></div>
   <div class="stat gold"><strong>{today_count}</strong><span>Due Today</span></div>
@@ -246,7 +265,6 @@ body {{ font-family: 'DM Sans', sans-serif; background: var(--paper); color: var
   <div class="stat"><strong>{waiting_count}</strong><span>Waiting</span></div>
   <div class="stat"><strong>{total}</strong><span>Total Open</span></div>
 </div>
-
 <div class="ai-strip">
   <div class="ai-label">✦ AI<br>Summary</div>
   <div>
@@ -254,15 +272,12 @@ body {{ font-family: 'DM Sans', sans-serif; background: var(--paper); color: var
     <div class="ai-priority">{priority_chips}</div>
   </div>
 </div>
-
 <div class="columns">
   {render_col('🔴 Priority · Next &amp; Today', col1_tasks, today_str, 0.05)}
   {render_col('📅 This Week', col2_tasks, today_str, 0.15)}
   {render_col('📂 Waiting · Inbox · Meeting Prep', col3_tasks, today_str, 0.25)}
 </div>
-
-<div class="footer">Generated by GitHub Actions · {today_display} · {total} open tasks</div>
-
+<div class="footer">Generated by GitHub Actions · {today_display} · {total} open tasks · Click any task to open in Google Tasks</div>
 </body>
 </html>"""
 
@@ -272,20 +287,14 @@ body {{ font-family: 'DM Sans', sans-serif; background: var(--paper); color: var
 if __name__ == "__main__":
     today_str = date.today().isoformat()
     print(f"Fetching tasks for {today_str}…")
-
     tasks = fetch_all_tasks()
     print(f"  Fetched {len(tasks)} tasks across {len(TASK_LISTS)} lists.")
-
     print("Generating AI summary…")
     summary = generate_summary(tasks)
     print(f"  Summary: {summary[:80]}…")
-
     priorities = extract_priorities(tasks, today_str)
-
     print("Building HTML…")
     html = build_html(tasks, summary, priorities, today_str)
-
     with open("index.html", "w", encoding="utf-8") as f:
         f.write(html)
-
     print("Done. index.html written.")
