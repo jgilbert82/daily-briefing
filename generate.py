@@ -50,9 +50,9 @@ def fetch_all_tasks():
             for t in result.get("items", []):
                 if t.get("status") == "completed":
                     continue
-                due_raw = t.get("due")
-                due_str = due_raw[:10] if due_raw else None
-                task_id = t.get("id", "")
+                due_raw  = t.get("due")
+                due_str  = due_raw[:10] if due_raw else None
+                task_id  = t.get("id", "")
                 web_link = f"https://tasks.google.com/task/{task_id}?sa=6"
                 all_tasks.append({
                     "title": t.get("title", "").strip(),
@@ -70,8 +70,8 @@ def fetch_all_tasks():
 
 def generate_summary(tasks):
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
-    today = date.today().isoformat()
-    lines = "\n".join(
+    today  = date.today().isoformat()
+    lines  = "\n".join(
         f"[{t['list']}] {t['title']}" + (f" (due: {t['due']})" if t['due'] else "")
         for t in tasks
     )
@@ -95,11 +95,7 @@ def extract_priorities(tasks, today_str):
     today   = [t for t in tasks if t["due"] == today_str]
     nxt     = [t for t in tasks if t["list"] == "NEXT" and not t["due"]]
     picks   = (overdue + today + nxt)[:5]
-    labels  = []
-    for i, t in enumerate(picks, 1):
-        short = t["title"][:55] + ("…" if len(t["title"]) > 55 else "")
-        labels.append(f"{i} · {short}")
-    return labels
+    return [f"{i+1} · {t['title'][:55]}{'…' if len(t['title'])>55 else ''}" for i, t in enumerate(picks)]
 
 
 # ── HTML HELPERS ──────────────────────────────────────────────────────────────
@@ -124,25 +120,24 @@ def esc(s):
 
 def render_task(t, today_str):
     cls  = classify_date(t["due"], today_str)
-    note = f'<div class="task-note">{esc((t["note"] or "")[:120])}{"…" if t["note"] and len(t["note"]) > 120 else ""}</div>' if t["note"] else ""
-    link = esc(t.get("link", "#"))
-    return f"""<div class="task">
-  <a class="task-title" href="{link}" target="_blank" rel="noopener">{esc(t['title'])}<span class="open-icon">↗</span></a>
-  <div class="task-meta">
-    <span class="badge {cls}">{badge_label(cls, t['due'])}</span>
-    <span class="list-tag">{esc(t['list'])}</span>
-    <a class="open-link" href="{link}" target="_blank" rel="noopener">Open in Tasks ↗</a>
-  </div>
-  {note}
-</div>"""
+    note = (f'<div class="task-note">{esc((t["note"] or "")[:120])}'
+            f'{"…" if t["note"] and len(t["note"])>120 else ""}</div>') if t["note"] else ""
+    link = esc(t.get("link","#"))
+    return (f'<div class="task" data-status="{cls}" data-list="{esc(t["list"])}">'
+            f'<a class="task-title" href="{link}" target="_blank" rel="noopener">'
+            f'{esc(t["title"])}<span class="open-icon">↗</span></a>'
+            f'<div class="task-meta">'
+            f'<span class="badge {cls}">{badge_label(cls, t["due"])}</span>'
+            f'<span class="list-tag">{esc(t["list"])}</span>'
+            f'<a class="open-link" href="{link}" target="_blank" rel="noopener">Open in Tasks ↗</a>'
+            f'</div>{note}</div>')
 
 def render_col(title, tasks, today_str, delay):
     items = "\n".join(render_task(t, today_str) for t in tasks) if tasks else \
-        '<div style="font-size:0.8rem;color:var(--muted);font-style:italic;padding:12px 0">Clear.</div>'
-    return f"""<div class="col" style="animation-delay:{delay}s">
-  <div class="col-head">{title}<span class="col-count">{len(tasks)}</span></div>
-  {items}
-</div>"""
+        '<div class="empty-col">Clear.</div>'
+    return (f'<div class="col" style="animation-delay:{delay}s">'
+            f'<div class="col-head">{title}<span class="col-count">{len(tasks)}</span></div>'
+            f'{items}</div>')
 
 
 # ── HTML BUILD ────────────────────────────────────────────────────────────────
@@ -154,14 +149,14 @@ def build_html(tasks, summary, priorities, today_str):
     waiting_count = sum(1 for t in tasks if t["list"] == "WAITING")
     total         = len(tasks)
 
-    col1_tasks = [t for t in tasks if t["list"] == "NEXT" or classify_date(t["due"], today_str) in ("overdue", "today")]
-    seen = set(id(t) for t in col1_tasks)
-    col2_tasks = [t for t in tasks if id(t) not in seen and t["list"] == "THIS WEEK"]
-    seen.update(id(t) for t in col2_tasks)
-    col3_tasks = [t for t in tasks if id(t) not in seen]
+    col1 = [t for t in tasks if t["list"] == "NEXT" or classify_date(t["due"], today_str) in ("overdue","today")]
+    seen = set(id(t) for t in col1)
+    col2 = [t for t in tasks if id(t) not in seen and t["list"] == "THIS WEEK"]
+    seen.update(id(t) for t in col2)
+    col3 = [t for t in tasks if id(t) not in seen]
 
-    priority_chips = "\n".join(f'<span class="priority-chip">{esc(p)}</span>' for p in priorities)
-    today_display  = datetime.strptime(today_str, "%Y-%m-%d").strftime("%A %-d %B %Y")
+    chips        = "\n".join(f'<span class="priority-chip">{esc(p)}</span>' for p in priorities)
+    today_display = datetime.strptime(today_str, "%Y-%m-%d").strftime("%A %-d %B %Y")
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -172,69 +167,89 @@ def build_html(tasks, summary, priorities, today_str):
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 :root {{
-  --ink: #1a1a2e; --paper: #f5f0e8; --cream: #ede8dc;
-  --accent: #c8502a; --gold: #b08a20; --muted: #7a7468; --border: #d4cfc5;
+  --ink:#1a1a2e; --paper:#f5f0e8; --cream:#ede8dc;
+  --accent:#c8502a; --gold:#b08a20; --muted:#7a7468; --border:#d4cfc5;
 }}
-* {{ box-sizing: border-box; margin: 0; padding: 0; }}
-body {{ font-family: 'DM Sans', sans-serif; background: var(--paper); color: var(--ink); min-height: 100vh; }}
-.masthead {{ background: var(--ink); color: var(--paper); padding: 28px 40px 22px; display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 12px; border-bottom: 4px solid var(--accent); }}
-.masthead h1 {{ font-family: 'Playfair Display', serif; font-size: 2.6rem; letter-spacing: -0.5px; line-height: 1; }}
-.edition {{ font-size: .7rem; letter-spacing: 3px; text-transform: uppercase; color: var(--accent); margin-top: 7px; font-weight: 500; }}
-.date-line {{ font-family: 'Playfair Display', serif; font-size: 1rem; opacity: .85; text-align: right; }}
-.sub {{ font-size: .68rem; letter-spacing: 2px; text-transform: uppercase; opacity: .45; margin-top: 5px; text-align: right; }}
-.last-updated {{ font-size: .6rem; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,.3); margin-top: 6px; text-align: right; }}
-.stats-bar {{ background: var(--ink); display: flex; padding: 16px 40px; border-top: 1px solid rgba(255,255,255,.08); flex-wrap: wrap; gap: 32px; }}
-.stat strong {{ font-family: 'Playfair Display', serif; font-size: 1.8rem; display: block; line-height: 1; color: var(--paper); }}
-.stat span {{ font-size: .6rem; letter-spacing: 2.5px; text-transform: uppercase; color: rgba(255,255,255,.35); }}
-.stat.red strong {{ color: #e07a5a; }} .stat.gold strong {{ color: #d4aa50; }}
-.ai-strip {{ background: var(--cream); border-bottom: 2px solid var(--border); padding: 20px 40px; display: flex; gap: 20px; align-items: flex-start; }}
-.ai-label {{ font-size: .58rem; letter-spacing: 3px; text-transform: uppercase; color: var(--gold); font-weight: 600; white-space: nowrap; padding-top: 3px; flex-shrink: 0; }}
-.ai-text {{ font-size: .85rem; line-height: 1.8; color: var(--ink); font-style: italic; }}
-.ai-priority {{ margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; font-style: normal; }}
-.priority-chip {{ font-size: .62rem; letter-spacing: 1px; padding: 3px 10px; border: 1px solid var(--gold); color: var(--gold); background: rgba(176,138,32,.08); font-weight: 500; }}
-.columns {{ display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0; padding: 0 40px 60px; }}
-.col {{ padding: 28px 24px 0; border-right: 1px solid var(--border); animation: fadeUp .4s ease both; }}
-.col:first-child {{ padding-left: 0; }} .col:last-child {{ border-right: none; padding-right: 0; }}
-@keyframes fadeUp {{ from {{ opacity: 0; transform: translateY(8px); }} to {{ opacity: 1; transform: translateY(0); }} }}
-.col-head {{ font-size: .6rem; letter-spacing: 4px; text-transform: uppercase; color: var(--accent); font-weight: 600; border-bottom: 2px solid var(--ink); padding-bottom: 9px; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: baseline; }}
-.col-count {{ font-size: .75rem; color: var(--muted); letter-spacing: 0; font-weight: 400; font-family: 'Playfair Display', serif; }}
-.task {{ border-bottom: 1px solid var(--border); padding: 11px 0; }}
-.task:last-child {{ border-bottom: none; }}
-a.task-title {{
-  font-size: .83rem; font-weight: 500; line-height: 1.45;
-  color: var(--ink); display: block; margin-bottom: 5px;
-  text-decoration: underline; text-decoration-color: var(--border);
-  text-underline-offset: 3px; transition: color 0.15s, text-decoration-color 0.15s;
-}}
-a.task-title:hover {{ color: var(--accent); text-decoration-color: var(--accent); }}
-.open-icon {{ font-size: .7rem; color: var(--accent); margin-left: 4px; opacity: 0.6; }}
-.task-meta {{ display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }}
-.badge {{ font-size: .56rem; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 600; padding: 2px 7px; border: 1px solid; display: inline-block; }}
-.badge.overdue {{ color: var(--accent); border-color: var(--accent); background: rgba(200,80,42,.07); }}
-.badge.today {{ color: var(--gold); border-color: var(--gold); background: rgba(176,138,32,.08); }}
-.badge.upcoming {{ color: var(--muted); border-color: var(--border); }}
-.badge.no-date {{ color: var(--border); border-color: var(--border); }}
-.list-tag {{ font-size: .62rem; color: var(--muted); }}
-.open-link {{
-  font-size: .6rem; letter-spacing: 1px; text-transform: uppercase;
-  color: var(--accent); text-decoration: none; font-weight: 500;
-  border: 1px solid var(--accent); padding: 1px 7px;
-  opacity: 0.7; transition: opacity 0.15s, background 0.15s;
-  margin-left: auto;
-}}
-.open-link:hover {{ opacity: 1; background: rgba(200,80,42,.07); }}
-.task-note {{ font-size: .71rem; color: var(--muted); margin-top: 5px; line-height: 1.5; border-left: 2px solid var(--border); padding-left: 8px; font-style: italic; }}
-.footer {{ text-align: center; padding: 20px; font-size: .65rem; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; border-top: 1px solid var(--border); }}
-@media (max-width: 860px) {{
-  .masthead {{ padding: 20px; }} .stats-bar {{ padding: 14px 20px; gap: 20px; }}
-  .ai-strip {{ padding: 16px 20px; flex-direction: column; gap: 8px; }}
-  .columns {{ grid-template-columns: 1fr; padding: 0 20px 40px; }}
-  .col {{ padding: 20px 0 0; border-right: none; border-bottom: 1px solid var(--border); padding-bottom: 20px; }}
-  .col:last-child {{ border-bottom: none; }}
+*{{ box-sizing:border-box; margin:0; padding:0; }}
+body{{ font-family:'DM Sans',sans-serif; background:var(--paper); color:var(--ink); min-height:100vh; }}
+.masthead{{ background:var(--ink); color:var(--paper); padding:28px 40px 22px; display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:12px; border-bottom:4px solid var(--accent); }}
+.masthead h1{{ font-family:'Playfair Display',serif; font-size:2.6rem; letter-spacing:-0.5px; line-height:1; }}
+.edition{{ font-size:.7rem; letter-spacing:3px; text-transform:uppercase; color:var(--accent); margin-top:7px; font-weight:500; }}
+.date-line{{ font-family:'Playfair Display',serif; font-size:1rem; opacity:.85; text-align:right; }}
+.sub{{ font-size:.68rem; letter-spacing:2px; text-transform:uppercase; opacity:.45; margin-top:5px; text-align:right; }}
+.last-updated{{ font-size:.6rem; letter-spacing:1px; text-transform:uppercase; color:rgba(255,255,255,.3); margin-top:6px; text-align:right; }}
+
+/* STATS BAR */
+.stats-bar{{ background:var(--ink); display:flex; padding:16px 40px; border-top:1px solid rgba(255,255,255,.08); flex-wrap:wrap; gap:32px; }}
+.stat{{ cursor:pointer; padding:6px 12px; border:2px solid transparent; border-radius:2px; transition:border-color 0.15s, background 0.15s; }}
+.stat:hover{{ border-color:rgba(255,255,255,0.2); }}
+.stat.active{{ border-color:var(--accent) !important; background:rgba(200,80,42,0.15); }}
+.stat.active-gold{{ border-color:var(--gold) !important; background:rgba(176,138,32,0.15); }}
+.stat strong{{ font-family:'Playfair Display',serif; font-size:1.8rem; display:block; line-height:1; color:var(--paper); }}
+.stat span{{ font-size:.6rem; letter-spacing:2.5px; text-transform:uppercase; color:rgba(255,255,255,.35); }}
+.stat.red strong{{ color:#e07a5a; }}
+.stat.gold strong{{ color:#d4aa50; }}
+.stat-hint{{ font-size:.58rem; color:rgba(255,255,255,.2); letter-spacing:1px; display:block; margin-top:3px; }}
+
+/* FILTER BAR */
+.filter-bar{{ display:none; background:#2a2a3e; padding:10px 40px; align-items:center; gap:12px; border-bottom:2px solid var(--accent); }}
+.filter-bar.visible{{ display:flex; }}
+.filter-label{{ font-size:.65rem; letter-spacing:2px; text-transform:uppercase; color:rgba(255,255,255,.5); }}
+.filter-active{{ font-size:.75rem; color:var(--accent); font-weight:500; letter-spacing:1px; }}
+.filter-clear{{ font-size:.62rem; letter-spacing:1.5px; text-transform:uppercase; color:rgba(255,255,255,.4); border:1px solid rgba(255,255,255,.2); padding:3px 10px; cursor:pointer; margin-left:auto; background:transparent; font-family:'DM Sans',sans-serif; transition:all 0.15s; }}
+.filter-clear:hover{{ color:var(--paper); border-color:var(--paper); }}
+
+/* AI STRIP */
+.ai-strip{{ background:var(--cream); border-bottom:2px solid var(--border); padding:20px 40px; display:flex; gap:20px; align-items:flex-start; }}
+.ai-label{{ font-size:.58rem; letter-spacing:3px; text-transform:uppercase; color:var(--gold); font-weight:600; white-space:nowrap; padding-top:3px; flex-shrink:0; }}
+.ai-text{{ font-size:.85rem; line-height:1.8; color:var(--ink); font-style:italic; }}
+.ai-priority{{ margin-top:10px; display:flex; gap:8px; flex-wrap:wrap; font-style:normal; }}
+.priority-chip{{ font-size:.62rem; letter-spacing:1px; padding:3px 10px; border:1px solid var(--gold); color:var(--gold); background:rgba(176,138,32,.08); font-weight:500; }}
+
+/* COLUMNS */
+.columns{{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:0; padding:0 40px 60px; }}
+.col{{ padding:28px 24px 0; border-right:1px solid var(--border); animation:fadeUp .4s ease both; }}
+.col:first-child{{ padding-left:0; }}
+.col:last-child{{ border-right:none; padding-right:0; }}
+@keyframes fadeUp{{ from{{ opacity:0; transform:translateY(8px); }} to{{ opacity:1; transform:translateY(0); }} }}
+.col-head{{ font-size:.6rem; letter-spacing:4px; text-transform:uppercase; color:var(--accent); font-weight:600; border-bottom:2px solid var(--ink); padding-bottom:9px; margin-bottom:18px; display:flex; justify-content:space-between; align-items:baseline; }}
+.col-count{{ font-size:.75rem; color:var(--muted); letter-spacing:0; font-weight:400; font-family:'Playfair Display',serif; }}
+
+/* TASKS */
+.task{{ border-bottom:1px solid var(--border); padding:11px 0; transition:opacity 0.2s; }}
+.task:last-child{{ border-bottom:none; }}
+.task.hidden{{ display:none; }}
+a.task-title{{ font-size:.83rem; font-weight:500; line-height:1.45; color:var(--ink); display:block; margin-bottom:5px; text-decoration:underline; text-decoration-color:var(--border); text-underline-offset:3px; transition:color 0.15s, text-decoration-color 0.15s; }}
+a.task-title:hover{{ color:var(--accent); text-decoration-color:var(--accent); }}
+.open-icon{{ font-size:.7rem; color:var(--accent); margin-left:4px; opacity:0.6; }}
+.task-meta{{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }}
+.badge{{ font-size:.56rem; letter-spacing:1.5px; text-transform:uppercase; font-weight:600; padding:2px 7px; border:1px solid; display:inline-block; }}
+.badge.overdue{{ color:var(--accent); border-color:var(--accent); background:rgba(200,80,42,.07); }}
+.badge.today{{ color:var(--gold); border-color:var(--gold); background:rgba(176,138,32,.08); }}
+.badge.upcoming{{ color:var(--muted); border-color:var(--border); }}
+.badge.no-date{{ color:var(--border); border-color:var(--border); }}
+.list-tag{{ font-size:.62rem; color:var(--muted); }}
+.open-link{{ font-size:.6rem; letter-spacing:1px; text-transform:uppercase; color:var(--accent); text-decoration:none; font-weight:500; border:1px solid var(--accent); padding:1px 7px; opacity:0.7; transition:opacity 0.15s, background 0.15s; margin-left:auto; }}
+.open-link:hover{{ opacity:1; background:rgba(200,80,42,.07); }}
+.task-note{{ font-size:.71rem; color:var(--muted); margin-top:5px; line-height:1.5; border-left:2px solid var(--border); padding-left:8px; font-style:italic; }}
+.empty-col{{ font-size:.8rem; color:var(--muted); font-style:italic; padding:12px 0; }}
+.no-results{{ font-size:.8rem; color:var(--muted); font-style:italic; padding:16px 0; display:none; }}
+.col.has-filter .no-results{{ display:block; }}
+
+.footer{{ text-align:center; padding:20px; font-size:.65rem; color:var(--muted); letter-spacing:1px; text-transform:uppercase; border-top:1px solid var(--border); }}
+
+@media (max-width:860px){{
+  .masthead{{ padding:20px; }} .stats-bar{{ padding:14px 20px; gap:16px; }}
+  .ai-strip{{ padding:16px 20px; flex-direction:column; gap:8px; }}
+  .filter-bar{{ padding:10px 20px; }}
+  .columns{{ grid-template-columns:1fr; padding:0 20px 40px; }}
+  .col{{ padding:20px 0 0; border-right:none; border-bottom:1px solid var(--border); padding-bottom:20px; }}
+  .col:last-child{{ border-bottom:none; }}
 }}
 </style>
 </head>
 <body>
+
 <div class="masthead">
   <div>
     <h1>Daily Briefing</h1>
@@ -246,26 +261,96 @@ a.task-title:hover {{ color: var(--accent); text-decoration-color: var(--accent)
     <div class="last-updated">Auto-generated at 06:00</div>
   </div>
 </div>
+
 <div class="stats-bar">
-  <div class="stat red"><strong>{overdue_count}</strong><span>Overdue</span></div>
-  <div class="stat gold"><strong>{today_count}</strong><span>Due Today</span></div>
-  <div class="stat"><strong>{next_count}</strong><span>Next Actions</span></div>
-  <div class="stat"><strong>{waiting_count}</strong><span>Waiting</span></div>
-  <div class="stat"><strong>{total}</strong><span>Total Open</span></div>
+  <div class="stat red" id="stat-overdue" onclick="applyFilter('overdue')" title="Show overdue tasks only">
+    <strong>{overdue_count}</strong><span>Overdue</span>
+    <em class="stat-hint">click to filter</em>
+  </div>
+  <div class="stat gold" id="stat-today" onclick="applyFilter('today')" title="Show tasks due today only">
+    <strong>{today_count}</strong><span>Due Today</span>
+    <em class="stat-hint">click to filter</em>
+  </div>
+  <div class="stat" id="stat-next" onclick="applyFilter('next')" title="Show Next Actions only">
+    <strong>{next_count}</strong><span>Next Actions</span>
+    <em class="stat-hint">click to filter</em>
+  </div>
+  <div class="stat" id="stat-waiting" onclick="applyFilter('waiting')" title="Show Waiting tasks only">
+    <strong>{waiting_count}</strong><span>Waiting</span>
+    <em class="stat-hint">click to filter</em>
+  </div>
+  <div class="stat" id="stat-all">
+    <strong>{total}</strong><span>Total Open</span>
+  </div>
 </div>
+
+<div class="filter-bar" id="filterBar">
+  <span class="filter-label">Showing:</span>
+  <span class="filter-active" id="filterLabel"></span>
+  <button class="filter-clear" onclick="clearFilter()">✕ Show All</button>
+</div>
+
 <div class="ai-strip">
   <div class="ai-label">✦ AI<br>Summary</div>
   <div>
     <div class="ai-text">{esc(summary)}</div>
-    <div class="ai-priority">{priority_chips}</div>
+    <div class="ai-priority">{chips}</div>
   </div>
 </div>
-<div class="columns">
-  {render_col('🔴 Priority · Next &amp; Today', col1_tasks, today_str, 0.05)}
-  {render_col('📅 This Week', col2_tasks, today_str, 0.15)}
-  {render_col('📂 Waiting · Inbox · Meeting Prep', col3_tasks, today_str, 0.25)}
+
+<div class="columns" id="columns">
+  {render_col('🔴 Priority · Next &amp; Today', col1, today_str, 0.05)}
+  {render_col('📅 This Week', col2, today_str, 0.15)}
+  {render_col('📂 Waiting · Inbox · Meeting Prep', col3, today_str, 0.25)}
 </div>
-<div class="footer">Generated by GitHub Actions · {today_display} · {total} open tasks</div>
+
+<div class="footer">Generated by GitHub Actions · {today_display} · {total} open tasks · Click any task to open in Google Tasks</div>
+
+<script>
+let activeFilter = null;
+
+const FILTER_LABELS = {{
+  overdue: '🔴 Overdue tasks only',
+  today:   '🟡 Due today only',
+  next:    'Next Actions only',
+  waiting: 'Waiting tasks only',
+}};
+
+function applyFilter(filter) {{
+  if (activeFilter === filter) {{ clearFilter(); return; }}
+  activeFilter = filter;
+
+  // Update stat button styles
+  document.querySelectorAll('.stat').forEach(s => {{
+    s.classList.remove('active','active-gold');
+  }});
+  const el = document.getElementById('stat-' + filter);
+  if (el) el.classList.add(filter === 'today' ? 'active-gold' : 'active');
+
+  // Show filter bar
+  document.getElementById('filterBar').classList.add('visible');
+  document.getElementById('filterLabel').textContent = FILTER_LABELS[filter] || filter;
+
+  // Filter tasks
+  document.querySelectorAll('.task').forEach(task => {{
+    const status = task.dataset.status;
+    const list   = task.dataset.list;
+    let show = false;
+    if (filter === 'overdue')  show = status === 'overdue';
+    if (filter === 'today')    show = status === 'today';
+    if (filter === 'next')     show = list === 'NEXT';
+    if (filter === 'waiting')  show = list === 'WAITING';
+    task.classList.toggle('hidden', !show);
+  }});
+}}
+
+function clearFilter() {{
+  activeFilter = null;
+  document.querySelectorAll('.stat').forEach(s => s.classList.remove('active','active-gold'));
+  document.getElementById('filterBar').classList.remove('visible');
+  document.querySelectorAll('.task').forEach(t => t.classList.remove('hidden'));
+}}
+</script>
 </body>
 </html>"""
 
