@@ -21,6 +21,19 @@ TASK_LISTS = [
 
 GITHUB_REPO = "jgilbert82/daily-briefing"
 
+TAG_LEGEND = """
+Task title tags and their meaning:
+- [AEWSYD] = AEW / Sydmarken 5
+- [AEWKYS] = AEW / Kystvejen 24-30 (Kastrup)
+- [AXA]    = AXA Nordic
+- [EQT]    = EQT
+- [CRM]    = Business development & client relationships
+- [FINANCE] = Invoices, billing, Yardi, AR Warsaw
+- [ADMIN]  = Internal CBRE / systems / compliance
+- [ESG]    = ESG, GRESB, DGNB, BREEAM
+- [PERSONAL] = Personal
+""".strip()
+
 def get_tasks_service():
     creds_data = json.loads(os.environ["GOOGLE_CREDENTIALS_JSON"])
     creds = Credentials(
@@ -71,17 +84,36 @@ def generate_summary(tasks):
         f"[{t['list']}] {t['title']}" + (f" (due: {t['due']})" if t['due'] else "")
         for t in tasks
     )
+
+    prompt = f"""My open tasks for today ({today}):
+
+{lines}
+
+{TAG_LEGEND}
+
+Please summarise my tasks as follows:
+
+1. OVERDUE & URGENT — list any tasks with a due date of today or earlier, individually, with their list name and due date. If none, say "Nothing overdue."
+
+2. BY CLIENT / CATEGORY — group all remaining incomplete tasks by their tag. For each group with active tasks, write 1-3 concise bullet points summarising what needs to happen. Synthesise where multiple tasks relate to the same theme. Skip groups with no active tasks.
+
+3. WAITING ON — summarise items in the WAITING list in one short paragraph.
+
+4. TODAY'S PRIORITIES — a 3-5 sentence narrative of the key priorities for today and this week. Be direct and specific.
+
+Keep the tone concise and professional. Do not repeat task titles verbatim — paraphrase and synthesise. Use plain text with section headers as shown above. No markdown formatting."""
+
     msg = client.messages.create(
         model="claude-opus-4-5",
-        max_tokens=500,
+        max_tokens=800,
         system=(
             f"You are a sharp, concise executive assistant briefing Joseph, "
             f"a Senior Property Manager at CBRE Copenhagen. Today is {today}. "
-            f"Write a 3-5 sentence morning briefing: highlight the most urgent/overdue items, "
-            f"what to prioritise today, and one clear suggestion. "
-            f"Plain prose only. No bullets. No markdown."
+            f"You know his portfolio: AEW (Sydmarken 5 and Kystvejen/Kastrup), "
+            f"AXA Nordic, EQT, and internal CBRE work. "
+            f"Write clearly and professionally. Plain text only. No markdown."
         ),
-        messages=[{"role": "user", "content": f"My open tasks:\n{lines}\n\nBriefing please."}],
+        messages=[{"role": "user", "content": prompt}],
     )
     return msg.content[0].text.strip()
 
@@ -153,6 +185,19 @@ def build_html(tasks, summary, priorities, today_str):
     generated_at  = datetime.utcnow().strftime("%H:%M UTC")
     actions_url   = f"https://github.com/{GITHUB_REPO}/actions/workflows/daily-briefing.yml"
 
+    # Format summary with section headers as styled HTML blocks
+    summary_html = ""
+    for line in summary.split("\n"):
+        line = line.strip()
+        if not line:
+            continue
+        if line.startswith(("1.", "2.", "3.", "4.")):
+            summary_html += f'<div class="ai-section-head">{esc(line)}</div>'
+        elif line.startswith("•") or line.startswith("-"):
+            summary_html += f'<div class="ai-bullet">{esc(line)}</div>'
+        else:
+            summary_html += f'<div class="ai-para">{esc(line)}</div>'
+
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -190,8 +235,12 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
 .filter-clear:hover{{color:var(--paper);border-color:var(--paper);}}
 .ai-strip{{background:var(--cream);border-bottom:2px solid var(--border);padding:20px 40px;display:flex;gap:20px;align-items:flex-start;}}
 .ai-label{{font-size:.58rem;letter-spacing:3px;text-transform:uppercase;color:var(--gold);font-weight:600;white-space:nowrap;padding-top:3px;flex-shrink:0;}}
-.ai-text{{font-size:.85rem;line-height:1.8;color:var(--ink);font-style:italic;}}
-.ai-priority{{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;font-style:normal;}}
+.ai-text{{font-size:.85rem;line-height:1.8;color:var(--ink);}}
+.ai-section-head{{font-size:.72rem;letter-spacing:2px;text-transform:uppercase;color:var(--accent);font-weight:600;margin-top:12px;margin-bottom:4px;}}
+.ai-section-head:first-child{{margin-top:0;}}
+.ai-bullet{{font-size:.83rem;line-height:1.7;color:var(--ink);padding-left:12px;border-left:2px solid var(--border);margin-bottom:3px;}}
+.ai-para{{font-size:.83rem;line-height:1.7;color:var(--ink);font-style:italic;margin-bottom:4px;}}
+.ai-priority{{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;}}
 .priority-chip{{font-size:.62rem;letter-spacing:1px;padding:3px 10px;border:1px solid var(--gold);color:var(--gold);background:rgba(176,138,32,.08);font-weight:500;}}
 .columns{{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;padding:0 40px 60px;}}
 .col{{padding:28px 24px 0;border-right:1px solid var(--border);animation:fadeUp .4s ease both;}}
@@ -275,8 +324,8 @@ a.task-title:hover{{color:var(--accent);text-decoration-color:var(--accent);}}
 
 <div class="ai-strip">
   <div class="ai-label">&#x2726; AI<br>Summary</div>
-  <div>
-    <div class="ai-text">{esc(summary)}</div>
+  <div style="flex:1">
+    <div class="ai-text">{summary_html}</div>
     <div class="ai-priority">{chips}</div>
   </div>
 </div>
