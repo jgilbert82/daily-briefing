@@ -23,7 +23,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install notion-client anthropic
+        run: pip install requests anthropic
 
       - name: Generate briefing
         env:
