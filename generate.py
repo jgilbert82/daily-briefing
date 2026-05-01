@@ -5,39 +5,52 @@ and writes index.html for the Daily Briefing GitHub Pages site.
 
 import os
 import re
+import requests
 from datetime import date, datetime
-from notion_client import Client
 import anthropic
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
 
 NOTION_TASKS_DB = "b4d5dd97-ad93-40a2-b633-113cfc8b5cb3"
+NOTION_VERSION  = "2022-06-28"
 
 # Map Notion "Google Tasks List" select values to display names
 # Tasks with no list set land in "Inbox"
 LIST_ORDER = ["NEXT", "THIS WEEK", "WAITING", "MEETING PREP", "LATER", "Inbox"]
 
 
+def notion_headers():
+    return {
+        "Authorization": f"Bearer {os.environ['NOTION_API_KEY']}",
+        "Content-Type": "application/json",
+        "Notion-Version": NOTION_VERSION,
+    }
+
+
 # ── NOTION FETCH ──────────────────────────────────────────────────────────────
 
 def fetch_all_tasks():
-    notion = Client(auth=os.environ["NOTION_API_KEY"])
     all_tasks = []
     cursor = None
 
     while True:
-        kwargs = {
-            "database_id": NOTION_TASKS_DB,
+        body = {
+            "page_size": 100,
             "filter": {
                 "property": "Status",
                 "select": {"does_not_equal": "Done"},
             },
-            "page_size": 100,
         }
         if cursor:
-            kwargs["start_cursor"] = cursor
+            body["start_cursor"] = cursor
 
-        response = notion.databases.query(**kwargs)
+        resp = requests.post(
+            f"https://api.notion.com/v1/databases/{NOTION_TASKS_DB}/query",
+            headers=notion_headers(),
+            json=body,
+        )
+        resp.raise_for_status()
+        response = resp.json()
 
         for page in response["results"]:
             props = page["properties"]
