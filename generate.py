@@ -1,78 +1,116 @@
 """
-generate.py — fetches Google Tasks, calls Claude for a summary,
+generate.py — fetches tasks from Notion, calls Claude for a summary,
 and writes index.html for the Daily Briefing GitHub Pages site.
 """
 
 import os
-import json
+import re
 from datetime import date, datetime
-from google.oauth2.credentials import Credentials
-from google.auth.transport.requests import Request
-from googleapiclient.discovery import build
+from notion_client import Client
 import anthropic
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
 
-TASK_LISTS = [
-    {"id": "R3loUHR2QmRrMlJpMVhaUA",           "name": "NEXT"},
-    {"id": "MDkzMjAxNDU3NjI0MDc1NDE3OTM6MDow", "name": "Inbox"},
-    {"id": "YmhRWmFDUmFnY2p4bkxQMQ",           "name": "WAITING"},
-    {"id": "dkRESE5rN1FUVmlCRU9ZSg",           "name": "MEETING PREP"},
-    {"id": "NDV5NXg4MjZkMC14d0FGQQ",           "name": "THIS WEEK"},
-    {"id": "TU5mY3ZnTFY4eWdpaDlGSQ",           "name": "LATER"},
-]
+NOTION_TASKS_DB = "b4d5dd97-ad93-40a2-b633-113cfc8b5cb3"
 
-# ── GOOGLE TASKS ──────────────────────────────────────────────────────────────
+# Map Notion "Google Tasks List" select values to display names
+# Tasks with no list set land in "Inbox"
+LIST_ORDER = ["NEXT", "THIS WEEK", "WAITING", "MEETING PREP", "LATER", "Inbox"]
 
-def get_tasks_service():
-    creds_data = json.loads(os.environ["GOOGLE_CREDENTIALS_JSON"])
-    creds = Credentials(
-        token=creds_data["token"],
-        refresh_token=creds_data["refresh_token"],
-        token_uri="https://oauth2.googleapis.com/token",
-        client_id=creds_data["client_id"],
-        client_secret=creds_data["client_secret"],
-        scopes=["https://www.googleapis.com/auth/tasks.readonly"],
-    )
-    # Force token refresh so we always have a valid token
-    if creds.expired or not creds.valid:
-        print("  Refreshing Google token...")
-        creds.refresh(Request())
-    else:
-        print("  Token is valid, refreshing anyway to be safe...")
-        creds.refresh(Request())
-    print(f"  Token refreshed successfully.")
-    return build("tasks", "v1", credentials=creds)
 
+# ── NOTION FETCH ──────────────────────────────────────────────────────────────
 
 def fetch_all_tasks():
-    service = get_tasks_service()
+    notion = Client(auth=os.environ["NOTION_API_KEY"])
     all_tasks = []
-    for lst in TASK_LISTS:
+    cursor = None
+
+    while True:
+        kwargs = {
+            "database_id": NOTION_TASKS_DB,
+            "filter": {
+                "property": "Status",
+                "select": {"does_not_equal": "Done"},
+            },
+            "page_size": 100,
+        }
+        if cursor:
+            kwargs["start_cursor"] = cursor
+
+        response = notion.databases.query(**kwargs)
+
+        for page in response["results"]:
+            props = page["properties"]
+
+            # Title
+            title_parts = props.get("Task", {}).get("title", [])
+            title = "".join(p.get("plain_text", "") for p in title_parts).strip()
+            if not title:
+                continue  # skip empty rows
+
+            # Status
+            status_obj = props.get("Status", {}).get("select") or {}
+            status = status_obj.get("name", "")
+            if status == "Done":
+                continue
+
+            # List (maps to old Google Tasks list)
+            list_obj = props.get("Google Tasks List", {}).get("select") or {}
+            task_list = list_obj.get("name") or "Inbox"
+
+            # Due date
+            due_obj = props.get("Due Date", {}).get("date") or {}
+            due_str = (due_obj.get("start") or "")[:10] or None
+
+            # Notes (rich text)
+            notes_parts = props.get("Notes", {}).get("rich_text", [])
+            note = "".join(p.get("plain_text", "") for p in notes_parts).strip()[:200] or None
+
+            # Client tag
+            client_obj = props.get("Client", {}).get("select") or {}
+            client_tag = client_obj.get("name") or None
+
+            # Priority
+            priority_obj = props.get("Priority", {}).get("select") or {}
+            priority = priority_obj.get("name") or None
+
+            all_tasks.append({
+                "title":    title,
+                "list":     task_list,
+                "due":      due_str,
+                "note":     note,
+                "client":   client_tag,
+                "priority": priority,
+                "id":       page["id"],
+                "url":      page["url"],
+            })
+
+        if not response.get("has_more"):
+            break
+        cursor = response["next_cursor"]
+
+    # Sort: overdue/today first, then by list order, then alphabetical
+    def sort_key(t):
+        due = t["due"] or "9999-99-99"
         try:
-            result = service.tasks().list(
-                tasklist=lst["id"],
-                showCompleted=False,
-                showHidden=False,
-                maxResults=100,
-            ).execute()
-            items = result.get("items", [])
-            print(f"  {lst['name']}: {len(items)} tasks")
-            for t in items:
-                if t.get("status") == "completed":
-                    continue
-                due_raw = t.get("due")
-                due_str = due_raw[:10] if due_raw else None
-                all_tasks.append({
-                    "title": t.get("title", "").strip(),
-                    "list":  lst["name"],
-                    "due":   due_str,
-                    "note":  (t.get("notes") or "").strip()[:200] or None,
-                    "id":    t.get("id", ""),
-                    "list_id": lst["id"],
-                })
-        except Exception as e:
-            print(f"  WARNING: could not fetch {lst['name']}: {e}")
+            list_idx = LIST_ORDER.index(t["list"])
+        except ValueError:
+            list_idx = len(LIST_ORDER)
+        return (due, list_idx, t["title"].lower())
+
+    all_tasks.sort(key=sort_key)
+
+    # Print summary
+    counts = {}
+    for t in all_tasks:
+        counts[t["list"]] = counts.get(t["list"], 0) + 1
+    for lst in LIST_ORDER:
+        if lst in counts:
+            print(f"  {lst}: {counts[lst]} tasks")
+    for lst, n in counts.items():
+        if lst not in LIST_ORDER:
+            print(f"  {lst}: {n} tasks")
+
     return all_tasks
 
 
@@ -83,20 +121,14 @@ def generate_summary(tasks):
     today = date.today().isoformat()
 
     if not tasks:
-        return "No open tasks found today. Either your lists are clear, or there may be a sync issue — check Google Tasks directly to confirm."
+        return "No open tasks found today. Either your lists are clear, or there may be a sync issue — check Notion directly to confirm."
 
     lines = "\n".join(
-        f"[{t['list']}] {t['title']}" + (f" (due: {t['due']})" if t['due'] else "")
+        f"[{t['list']}] {t['title']}"
+        + (f" (due: {t['due']})" if t["due"] else "")
+        + (f" [Client: {t['client']}]" if t["client"] else "")
         for t in tasks
     )
-
-    # Detect clients from task titles
-    clients = set()
-    client_keywords = ["AEW", "SSCP", "Ingka", "Hedeland", "Mileway", "AXA", "Arrow", "EQT", "M&G", "BNPP", "Kystvejen", "Sydmarken"]
-    for t in tasks:
-        for kw in client_keywords:
-            if kw.lower() in t["title"].lower():
-                clients.add(kw)
 
     msg = client.messages.create(
         model="claude-opus-4-5",
@@ -133,18 +165,18 @@ def extract_priorities(tasks, today_str):
 # ── DATE HELPERS ──────────────────────────────────────────────────────────────
 
 def classify_date(due, today_str):
-    if not due:       return "no-date"
-    if due < today_str: return "overdue"
-    if due == today_str: return "today"
+    if not due:            return "no-date"
+    if due < today_str:    return "overdue"
+    if due == today_str:   return "today"
     return "upcoming"
 
 def fmt_date(due):
     return datetime.strptime(due, "%Y-%m-%d").strftime("%-d %b")
 
 def badge_label(cls, due):
-    if cls == "overdue":  return "Overdue"
-    if cls == "today":    return "Today"
-    if cls == "upcoming": return fmt_date(due)
+    if cls == "overdue":   return "Overdue"
+    if cls == "today":     return "Today"
+    if cls == "upcoming":  return fmt_date(due)
     return "—"
 
 def esc(s):
@@ -166,37 +198,51 @@ CLIENT_COLOURS = {
     "BNPP":     "#1d4ed8",
 }
 
-def detect_client(title):
+def detect_client(task):
+    """Check Notion Client field first, then fall back to keyword scan of title."""
+    notion_client = task.get("client") or ""
     for client, colour in CLIENT_COLOURS.items():
-        if client.lower() in title.lower():
+        if client.lower() in notion_client.lower():
+            return client, colour
+    for client, colour in CLIENT_COLOURS.items():
+        if client.lower() in task["title"].lower():
             return client, colour
     return None, None
 
-def client_badge(title):
-    client, colour = detect_client(title)
+def client_badge(task):
+    client, colour = detect_client(task)
     if not client:
         return ""
     return f'<span class="client-badge" style="background:{colour}22;color:{colour};border-color:{colour}88">{client}</span>'
 
+def priority_badge(task):
+    p = task.get("priority") or ""
+    if p == "High":
+        return '<span class="priority-tag high">⬆ High</span>'
+    if p == "Low":
+        return '<span class="priority-tag low">⬇ Low</span>'
+    return ""
+
 def clean_title(title):
-    """Strip noisy Pleexy prefixes like 'Day Book 1st October : ' and 'Inbox : '"""
-    import re
+    """Strip noisy prefixes."""
     title = re.sub(r'^Day Book[^:]+:\s*', '', title)
     title = re.sub(r'^Inbox\s*:\s*', '', title)
     return title.strip()
-
-def tasks_url(task):
-    return "https://tasks.google.com/tasks/search"
 
 
 # ── RENDER ────────────────────────────────────────────────────────────────────
 
 def render_task(t, today_str):
-    cls        = classify_date(t["due"], today_str)
-    title      = clean_title(t["title"])
-    cbadge     = client_badge(t["title"])
-    note       = f'<div class="task-note">{esc((t["note"] or "")[:120])}{"…" if t["note"] and len(t["note"])>120 else ""}</div>' if t["note"] else ""
-    open_link  = f'<a class="open-link" href="https://tasks.google.com/" target="_blank">OPEN IN TASKS ↗</a>'
+    cls       = classify_date(t["due"], today_str)
+    title     = clean_title(t["title"])
+    cbadge    = client_badge(t)
+    pbadge    = priority_badge(t)
+    note      = (
+        f'<div class="task-note">{esc((t["note"] or "")[:120])}'
+        f'{"…" if t["note"] and len(t["note"])>120 else ""}</div>'
+        if t["note"] else ""
+    )
+    open_link = f'<a class="open-link" href="{esc(t["url"])}" target="_blank">OPEN IN NOTION ↗</a>'
 
     return f"""<div class="task">
   <div class="task-top">
@@ -206,7 +252,7 @@ def render_task(t, today_str):
   <div class="task-meta">
     <span class="badge {cls}">{badge_label(cls, t['due'])}</span>
     <span class="list-tag">{esc(t['list'])}</span>
-    {cbadge}
+    {cbadge}{pbadge}
   </div>
   {note}
 </div>"""
@@ -223,19 +269,18 @@ def render_col(title, tasks, today_str, delay):
 
 
 def format_summary_html(summary_text):
-    """Convert the structured summary text to HTML with styled headings."""
-    import re
     lines = summary_text.split('\n')
     html_parts = []
     for line in lines:
         line = line.strip()
         if not line:
             continue
-        # Detect numbered headings like "1. OVERDUE & URGENT"
         heading_match = re.match(r'^\d+\.\s+([A-Z][A-Z\s/&]+)$', line)
         if heading_match:
             html_parts.append(f'<div class="summary-heading">{esc(heading_match.group(1))}</div>')
         else:
+            # Strip any remaining **markdown** bold
+            line = re.sub(r'\*\*([^*]+)\*\*', r'\1', line)
             html_parts.append(f'<p>{esc(line)}</p>')
     return '\n'.join(html_parts)
 
@@ -256,7 +301,6 @@ def build_html(tasks, summary, priorities, today_str):
     priority_chips = "\n".join(f'<span class="priority-chip">{esc(p)}</span>' for p in priorities)
     today_display  = datetime.strptime(today_str, "%Y-%m-%d").strftime("%A %-d %B %Y")
     summary_html   = format_summary_html(summary)
-
     generated_time = datetime.utcnow().strftime("%H:%M UTC")
 
     return f"""<!DOCTYPE html>
@@ -312,9 +356,13 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
 .badge.no-date{{color:var(--border);border-color:var(--border);}}
 .list-tag{{font-size:.62rem;color:var(--muted);}}
 .client-badge{{font-size:.58rem;letter-spacing:1px;text-transform:uppercase;font-weight:600;padding:2px 7px;border:1px solid;display:inline-block;border-radius:2px;}}
+.priority-tag{{font-size:.56rem;letter-spacing:1px;text-transform:uppercase;font-weight:600;padding:2px 6px;border-radius:2px;}}
+.priority-tag.high{{color:#c8502a;background:rgba(200,80,42,.08);}}
+.priority-tag.low{{color:var(--muted);}}
 .task-note{{font-size:.71rem;color:var(--muted);margin-top:5px;line-height:1.5;border-left:2px solid var(--border);padding-left:8px;font-style:italic;}}
 .empty{{font-size:.8rem;color:var(--muted);font-style:italic;padding:12px 0;}}
 .footer{{text-align:center;padding:20px;font-size:.65rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;border-top:1px solid var(--border);}}
+.notion-badge{{display:inline-flex;align-items:center;gap:5px;font-size:.58rem;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.25);margin-top:6px;}}
 @media(max-width:860px){{
   .masthead{{padding:20px;}} .stats-bar{{padding:14px 20px;gap:20px;}}
   .ai-strip{{padding:16px 20px;flex-direction:column;gap:8px;}}
@@ -334,6 +382,7 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
     <div class="date-line">{today_display}</div>
     <div class="sub">Good morning, Joseph</div>
     <div class="gen-time">Generated at {generated_time}</div>
+    <div class="notion-badge">✦ Powered by Notion</div>
   </div>
 </div>
 
@@ -359,7 +408,7 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
   {render_col('Waiting · Inbox · Meeting Prep', col3, today_str, 0.25)}
 </div>
 
-<div class="footer">Generated by GitHub Actions · {today_display} · {total} open tasks · Click any task to open in Google Tasks</div>
+<div class="footer">Generated by GitHub Actions · {today_display} · {total} open tasks · Powered by Notion</div>
 </body>
 </html>"""
 
@@ -369,15 +418,15 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
 if __name__ == "__main__":
     today_str = date.today().isoformat()
     print(f"\n{'='*50}")
-    print(f"Daily Briefing Generator — {today_str}")
+    print(f"Daily Briefing Generator (Notion) — {today_str}")
     print(f"{'='*50}")
 
-    print("\nFetching tasks from Google Tasks...")
+    print("\nFetching tasks from Notion...")
     tasks = fetch_all_tasks()
     print(f"\nTotal: {len(tasks)} incomplete tasks fetched.")
 
     if len(tasks) == 0:
-        print("WARNING: No tasks found. Check Google Tasks API credentials.")
+        print("WARNING: No tasks found. Check NOTION_API_KEY and database permissions.")
 
     print("\nGenerating AI summary...")
     summary = generate_summary(tasks)
