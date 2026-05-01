@@ -11,7 +11,7 @@ import anthropic
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
 
-NOTION_TASKS_DB = "b4d5dd97-ad93-40a2-b633-113cfc8b5cb3"
+NOTION_TASKS_DB = "d5669af6-6732-432b-b1ac-558a860164ca"
 NOTION_VERSION  = "2022-06-28"
 
 # Map Notion "Google Tasks List" select values to display names
