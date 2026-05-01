@@ -2,7 +2,8 @@ name: Daily Briefing
 
 on:
   schedule:
-    # 05:00 UTC = 06:00 Copenhagen (winter) / 07:00 (summer)
+    # 05:00 UTC = 06:00 Copenhagen (winter/CET)
+    # Change to '0 4 * * 1-5' for summer (CEST, UTC+2)
     - cron: '0 5 * * 1-5'
   workflow_dispatch:
   repository_dispatch:
@@ -22,13 +23,12 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install google-auth google-auth-httplib2 google-api-python-client anthropic
+        run: pip install notion-client anthropic
 
       - name: Generate briefing
         env:
-          GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          PAT_REFRESH: ${{ secrets.PAT_REFRESH }}
         run: python generate.py
 
       - name: Commit and push updated index.html
