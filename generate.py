@@ -1,6 +1,14 @@
 """
-generate.py — fetches tasks from Notion, calls Claude for a summary,
+generate.py — fetches tasks from Notion, calls Claude for a focused summary,
 and writes index.html for the Daily Briefing GitHub Pages site.
+
+Key changes from v1:
+- Filters out Done tasks (Status=Done or Done checkbox)
+- Uses Horizon field (Today/This Week/Next Week/Someday)
+- Resolves Client relation to actual names
+- Deduplicates repeated task titles (e.g. "Approve invoices" templates)
+- Shows AI email summaries (Message field) as task context
+- Sections: Today → Overdue → Waiting → This Week → Later
 """
 
 import os
@@ -11,12 +19,32 @@ import anthropic
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
 
-NOTION_TASKS_DB = "d5669af6-6732-432b-b1ac-558a860164ca"
-NOTION_VERSION  = "2022-06-28"
+NOTION_TASKS_DB   = "d5669af6-6732-432b-b1ac-558a860164ca"
+NOTION_CLIENTS_DB = "81b6953304db4b76ba7a25a9704fe7b2"
+NOTION_VERSION    = "2022-06-28"
 
-# Map Notion "Google Tasks List" select values to display names
-# Tasks with no list set land in "Inbox"
-LIST_ORDER = ["NEXT", "THIS WEEK", "WAITING", "MEETING PREP", "LATER", "Inbox"]
+CLIENT_COLOURS = {
+    "AEW":           "#2563eb",
+    "SSCP":          "#16a34a",
+    "Ingka":         "#d97706",
+    "Hedeland":      "#d97706",
+    "Mileway":       "#7c3aed",
+    "AXA":           "#0891b2",
+    "Arrow":         "#dc2626",
+    "EQT":           "#be185d",
+    "M&G":           "#065f46",
+    "BNPP":          "#1d4ed8",
+    "CBRE Internal": "#64748b",
+}
+
+WORK_TYPE_ICONS = {
+    "Finance / SC":    "💰",
+    "Reporting":       "📊",
+    "Chasing":         "📧",
+    "Client Relations":"🤝",
+    "Internal":        "🏢",
+    "Legal":           "⚖️",
+}
 
 
 def notion_headers():
@@ -27,20 +55,70 @@ def notion_headers():
     }
 
 
+# ── CLIENT LOOKUP ─────────────────────────────────────────────────────────────
+
+def build_client_map():
+    """Fetch all pages in Client Notes DB and return {page_id: client_name}."""
+    client_map = {}
+    cursor = None
+    while True:
+        body = {"page_size": 100}
+        if cursor:
+            body["start_cursor"] = cursor
+        resp = requests.post(
+            f"https://api.notion.com/v1/databases/{NOTION_CLIENTS_DB}/query",
+            headers=notion_headers(),
+            json=body,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        for page in data["results"]:
+            page_id = page["id"]
+            page_id_plain = page_id.replace("-", "")
+            props = page["properties"]
+            # Try common title property names
+            title_parts = (
+                props.get("Client", {}).get("title", [])
+                or props.get("Name",   {}).get("title", [])
+                or props.get("name",   {}).get("title", [])
+            )
+            name = "".join(p.get("plain_text", "") for p in title_parts).strip()
+            if name:
+                client_map[page_id]       = name
+                client_map[page_id_plain] = name
+        if not data.get("has_more"):
+            break
+        cursor = data["next_cursor"]
+    print(f"  Client map: {len(client_map)//2} clients found")
+    return client_map
+
+
 # ── NOTION FETCH ──────────────────────────────────────────────────────────────
 
-def fetch_all_tasks():
+def parse_client_name(client_prop, client_map):
+    """Extract client name from a Notion relation property."""
+    relations = client_prop.get("relation", [])
+    if not relations:
+        return None
+    pid = relations[0].get("id", "")
+    return client_map.get(pid) or client_map.get(pid.replace("-", "")) or None
+
+
+def is_done(props):
+    """Return True if task is completed."""
+    status = (props.get("Status", {}).get("select") or {}).get("name", "")
+    if status == "Done":
+        return True
+    return bool(props.get("Done", {}).get("checkbox", False))
+
+
+def fetch_all_tasks(client_map):
     all_tasks = []
+    seen_titles = {}
     cursor = None
 
     while True:
-        body = {
-            "page_size": 100,
-            "filter": {
-                "property": "Status",
-                "select": {"does_not_equal": "Done"},
-            },
-        }
+        body = {"page_size": 100}
         if cursor:
             body["start_cursor"] = cursor
 
@@ -50,271 +128,276 @@ def fetch_all_tasks():
             json=body,
         )
         resp.raise_for_status()
-        response = resp.json()
+        data = resp.json()
 
-        for page in response["results"]:
+        for page in data["results"]:
             props = page["properties"]
+
+            # Skip done tasks
+            if is_done(props):
+                continue
 
             # Title
             title_parts = props.get("Task", {}).get("title", [])
             title = "".join(p.get("plain_text", "") for p in title_parts).strip()
             if not title:
-                continue  # skip empty rows
-
-            # Status
-            status_obj = props.get("Status", {}).get("select") or {}
-            status = status_obj.get("name", "")
-            if status == "Done":
                 continue
 
-            # List (maps to old Google Tasks list)
-            list_obj = props.get("Google Tasks List", {}).get("select") or {}
-            task_list = list_obj.get("name") or "Inbox"
+            # Deduplicate repeated titles (template noise like "Approve invoices")
+            seen_titles[title] = seen_titles.get(title, 0) + 1
+            if seen_titles[title] > 1:
+                continue
 
-            # Due date
+            status    = (props.get("Status",    {}).get("select") or {}).get("name", "") or "Not Started"
+            horizon   = (props.get("Horizon",   {}).get("select") or {}).get("name", "") or ""
+            priority  = (props.get("Priority",  {}).get("select") or {}).get("name", "") or ""
+            work_type = (props.get("Work Type", {}).get("select") or {}).get("name", "") or ""
+            source    = (props.get("Source",    {}).get("select") or {}).get("name", "") or ""
+
             due_obj = props.get("Due Date", {}).get("date") or {}
             due_str = (due_obj.get("start") or "")[:10] or None
 
-            # Notes (rich text)
-            notes_parts = props.get("Notes", {}).get("rich_text", [])
-            note = "".join(p.get("plain_text", "") for p in notes_parts).strip()[:200] or None
+            client_name = parse_client_name(props.get("Client", {}), client_map)
 
-            # Client tag
-            client_obj = props.get("Client", {}).get("select") or {}
-            client_tag = client_obj.get("name") or None
+            # Context: AI email Message summary preferred, fallback to Notes
+            message = "".join(
+                p.get("plain_text", "")
+                for p in props.get("Message", {}).get("rich_text", [])
+            ).strip()
+            notes = "".join(
+                p.get("plain_text", "")
+                for p in props.get("Notes", {}).get("rich_text", [])
+            ).strip()
+            context = (message or notes or "")[:250] or None
 
-            # Priority
-            priority_obj = props.get("Priority", {}).get("select") or {}
-            priority = priority_obj.get("name") or None
+            # Sender name (strip email address)
+            sender_raw = "".join(
+                p.get("plain_text", "")
+                for p in (props.get("Sender", {}).get("rich_text", []) or [])
+            ).strip()
+            sender = sender_raw.split("<")[0].strip() if sender_raw else None
 
             all_tasks.append({
-                "title":    title,
-                "list":     task_list,
-                "due":      due_str,
-                "note":     note,
-                "client":   client_tag,
-                "priority": priority,
-                "id":       page["id"],
-                "url":      page["url"],
+                "title":     title,
+                "status":    status,
+                "horizon":   horizon,
+                "due":       due_str,
+                "priority":  priority,
+                "work_type": work_type,
+                "source":    source,
+                "client":    client_name,
+                "context":   context,
+                "sender":    sender,
+                "id":        page["id"],
+                "url":       page["url"],
             })
 
-        if not response.get("has_more"):
+        if not data.get("has_more"):
             break
-        cursor = response["next_cursor"]
+        cursor = data["next_cursor"]
 
-    # Sort: overdue/today first, then by list order, then alphabetical
-    def sort_key(t):
-        due = t["due"] or "9999-99-99"
-        try:
-            list_idx = LIST_ORDER.index(t["list"])
-        except ValueError:
-            list_idx = len(LIST_ORDER)
-        return (due, list_idx, t["title"].lower())
-
-    all_tasks.sort(key=sort_key)
-
-    # Print summary
-    counts = {}
-    for t in all_tasks:
-        counts[t["list"]] = counts.get(t["list"], 0) + 1
-    for lst in LIST_ORDER:
-        if lst in counts:
-            print(f"  {lst}: {counts[lst]} tasks")
-    for lst, n in counts.items():
-        if lst not in LIST_ORDER:
-            print(f"  {lst}: {n} tasks")
-
+    print(f"  {len(all_tasks)} active (non-done) tasks fetched")
     return all_tasks
+
+
+# ── BUCKETING ─────────────────────────────────────────────────────────────────
+
+def bucket_tasks(tasks, today_str):
+    overdue, today, waiting, this_week, later = [], [], [], [], []
+
+    for t in tasks:
+        if t["status"] == "Waiting":
+            waiting.append(t)
+            continue
+
+        due     = t["due"]
+        horizon = t["horizon"]
+
+        if due and due < today_str:
+            overdue.append(t)
+        elif horizon == "🔴 Today" or due == today_str:
+            today.append(t)
+        elif horizon == "🟡 This Week":
+            this_week.append(t)
+        else:
+            later.append(t)
+
+    def sort_key(t):
+        p = {"High": 0, "Medium": 1, "Low": 2}.get(t["priority"], 3)
+        d = t["due"] or "9999-99-99"
+        return (p, d)
+
+    for bucket in [overdue, today, waiting, this_week, later]:
+        bucket.sort(key=sort_key)
+
+    return overdue, today, waiting, this_week, later
 
 
 # ── AI SUMMARY ────────────────────────────────────────────────────────────────
 
-def generate_summary(tasks):
+def generate_summary(overdue, today, waiting, this_week, today_str):
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
-    today = date.today().isoformat()
+    today_date = date.today().strftime("%A %-d %B %Y")
 
-    if not tasks:
-        return "No open tasks found today. Either your lists are clear, or there may be a sync issue — check Notion directly to confirm."
+    def fmt(tasks, limit=10):
+        return "\n".join(
+            f"  [{t.get('client') or 'No client'}] [{t.get('work_type') or ''}] "
+            f"[{t['priority'] or ''}] {t['title']}"
+            + (f" (due {t['due']})" if t["due"] else "")
+            for t in tasks[:limit]
+        )
 
-    lines = "\n".join(
-        f"[{t['list']}] {t['title']}"
-        + (f" (due: {t['due']})" if t["due"] else "")
-        + (f" [Client: {t['client']}]" if t["client"] else "")
-        for t in tasks
-    )
+    sections = []
+    if overdue:
+        sections.append(f"OVERDUE ({len(overdue)}):\n{fmt(overdue, 8)}")
+    if today:
+        sections.append(f"TODAY ({len(today)}):\n{fmt(today)}")
+    if waiting:
+        sections.append(f"WAITING ({len(waiting)}):\n{fmt(waiting, 6)}")
+    if this_week:
+        sections.append(f"THIS WEEK ({len(this_week)}):\n{fmt(this_week, 8)}")
+
+    task_text = "\n\n".join(sections) or "No active tasks."
 
     msg = client.messages.create(
         model="claude-opus-4-5",
-        max_tokens=600,
+        max_tokens=450,
         system=(
-            f"You are a sharp, concise executive assistant briefing Joseph, "
-            f"a Senior Property Manager at CBRE Copenhagen managing clients including "
-            f"AEW, SSCP, Ingka/Hedeland, Mileway, AXA Nordic, Arrow Capital and EQT. "
-            f"Today is {today}. "
-            f"Write a structured morning briefing with these sections:\n"
-            f"1. OVERDUE & URGENT\n"
-            f"2. BY CLIENT / CATEGORY\n"
-            f"3. WAITING ON\n"
-            f"4. TODAY'S PRIORITIES\n\n"
-            f"Keep each section to 2-3 sentences max. Plain prose. No markdown bullets."
+            f"You are a sharp executive assistant briefing Joseph, Senior Property Manager "
+            f"at CBRE Copenhagen. Clients: AEW (Sydmarken & Kystvejen), SSCP, Ingka/Hedeland, "
+            f"Mileway, AXA Nordic, Arrow Capital, EQT, M&G. Today is {today_date}.\n\n"
+            f"Write a tight morning briefing with EXACTLY these 3 section headings on their own line:\n"
+            f"MUST DO TODAY\n"
+            f"WATCH / CHASING\n"
+            f"THIS WEEK\n\n"
+            f"Be SPECIFIC — name the actual tasks and clients. 2-3 sentences per section. "
+            f"No bullets. Plain prose."
         ),
-        messages=[{"role": "user", "content": f"My open tasks:\n{lines}\n\nMorning briefing please."}],
+        messages=[{"role": "user", "content": task_text}],
     )
     return msg.content[0].text.strip()
 
 
-def extract_priorities(tasks, today_str):
-    overdue = [t for t in tasks if t["due"] and t["due"] < today_str]
-    today   = [t for t in tasks if t["due"] == today_str]
-    nxt     = [t for t in tasks if t["list"] == "NEXT" and not t["due"]]
-    picks   = (overdue + today + nxt)[:5]
-    labels  = []
-    for i, t in enumerate(picks, 1):
-        short = t["title"][:55] + ("…" if len(t["title"]) > 55 else "")
-        labels.append(f"{i} · {short}")
-    return labels
-
-
-# ── DATE HELPERS ──────────────────────────────────────────────────────────────
-
-def classify_date(due, today_str):
-    if not due:            return "no-date"
-    if due < today_str:    return "overdue"
-    if due == today_str:   return "today"
-    return "upcoming"
-
-def fmt_date(due):
-    return datetime.strptime(due, "%Y-%m-%d").strftime("%-d %b")
-
-def badge_label(cls, due):
-    if cls == "overdue":   return "Overdue"
-    if cls == "today":     return "Today"
-    if cls == "upcoming":  return fmt_date(due)
-    return "—"
+# ── HELPERS ───────────────────────────────────────────────────────────────────
 
 def esc(s):
-    return (s or "").replace("&","&amp;").replace("<","&lt;").replace(">","&gt;").replace('"',"&quot;")
+    return (s or "").replace("&","&amp;").replace("<","&lt;").replace(">","&gt;").replace('"','&quot;')
 
-
-# ── CLIENT TAG DETECTION ──────────────────────────────────────────────────────
-
-CLIENT_COLOURS = {
-    "AEW":      "#2563eb",
-    "SSCP":     "#16a34a",
-    "Ingka":    "#d97706",
-    "Hedeland": "#d97706",
-    "Mileway":  "#7c3aed",
-    "AXA":      "#0891b2",
-    "Arrow":    "#dc2626",
-    "EQT":      "#be185d",
-    "M&G":      "#065f46",
-    "BNPP":     "#1d4ed8",
-}
-
-def detect_client(task):
-    """Check Notion Client field first, then fall back to keyword scan of title."""
-    notion_client = task.get("client") or ""
-    for client, colour in CLIENT_COLOURS.items():
-        if client.lower() in notion_client.lower():
-            return client, colour
-    for client, colour in CLIENT_COLOURS.items():
-        if client.lower() in task["title"].lower():
-            return client, colour
-    return None, None
-
-def client_badge(task):
-    client, colour = detect_client(task)
-    if not client:
-        return ""
-    return f'<span class="client-badge" style="background:{colour}22;color:{colour};border-color:{colour}88">{client}</span>'
-
-def priority_badge(task):
-    p = task.get("priority") or ""
-    if p == "High":
-        return '<span class="priority-tag high">⬆ High</span>'
-    if p == "Low":
-        return '<span class="priority-tag low">⬇ Low</span>'
-    return ""
+def fmt_date(due):
+    try:
+        return datetime.strptime(due, "%Y-%m-%d").strftime("%-d %b")
+    except Exception:
+        return due
 
 def clean_title(title):
-    """Strip noisy prefixes."""
     title = re.sub(r'^Day Book[^:]+:\s*', '', title)
     title = re.sub(r'^Inbox\s*:\s*', '', title)
     return title.strip()
 
+def client_colour(name):
+    if not name:
+        return "#64748b"
+    for key, col in CLIENT_COLOURS.items():
+        if key.lower() in name.lower():
+            return col
+    return "#64748b"
 
-# ── RENDER ────────────────────────────────────────────────────────────────────
-
-def render_task(t, today_str):
-    cls       = classify_date(t["due"], today_str)
-    title     = clean_title(t["title"])
-    cbadge    = client_badge(t)
-    pbadge    = priority_badge(t)
-    note      = (
-        f'<div class="task-note">{esc((t["note"] or "")[:120])}'
-        f'{"…" if t["note"] and len(t["note"])>120 else ""}</div>'
-        if t["note"] else ""
-    )
-    open_link = f'<a class="open-link" href="{esc(t["url"])}" target="_blank">OPEN IN NOTION ↗</a>'
-
-    return f"""<div class="task">
-  <div class="task-top">
-    <div class="task-title">{esc(title)}</div>
-    {open_link}
-  </div>
-  <div class="task-meta">
-    <span class="badge {cls}">{badge_label(cls, t['due'])}</span>
-    <span class="list-tag">{esc(t['list'])}</span>
-    {cbadge}{pbadge}
-  </div>
-  {note}
-</div>"""
-
-
-def render_col(title, tasks, today_str, delay):
-    items = "\n".join(render_task(t, today_str) for t in tasks) if tasks else \
-        '<div class="empty">Clear.</div>'
-    icon = "🔴" if "Priority" in title else ("📅" if "Week" in title else "📂")
-    return f"""<div class="col" style="animation-delay:{delay}s">
-  <div class="col-head"><span>{icon} {title}</span><span class="col-count">{len(tasks)}</span></div>
-  {items}
-</div>"""
-
-
-def format_summary_html(summary_text):
-    lines = summary_text.split('\n')
-    html_parts = []
-    for line in lines:
-        line = line.strip()
+def format_summary_html(text):
+    headings = {"MUST DO TODAY", "WATCH / CHASING", "THIS WEEK"}
+    parts = []
+    for line in text.split("\n"):
+        line = re.sub(r'\*\*([^*]+)\*\*', r'\1', line.strip())
         if not line:
             continue
-        heading_match = re.match(r'^\d+\.\s+([A-Z][A-Z\s/&]+)$', line)
-        if heading_match:
-            html_parts.append(f'<div class="summary-heading">{esc(heading_match.group(1))}</div>')
+        if line.rstrip(":").upper() in headings or line.upper() in headings:
+            parts.append(f'<div class="sum-head">{esc(line.rstrip(":"))}</div>')
         else:
-            # Strip any remaining **markdown** bold
-            line = re.sub(r'\*\*([^*]+)\*\*', r'\1', line)
-            html_parts.append(f'<p>{esc(line)}</p>')
-    return '\n'.join(html_parts)
+            parts.append(f'<p>{esc(line)}</p>')
+    return "\n".join(parts)
 
 
-def build_html(tasks, summary, priorities, today_str):
-    overdue_count = sum(1 for t in tasks if classify_date(t["due"], today_str) == "overdue")
-    today_count   = sum(1 for t in tasks if classify_date(t["due"], today_str) == "today")
-    next_count    = sum(1 for t in tasks if t["list"] == "NEXT")
-    waiting_count = sum(1 for t in tasks if t["list"] == "WAITING")
-    total         = len(tasks)
+# ── RENDERING ─────────────────────────────────────────────────────────────────
 
-    col1 = [t for t in tasks if t["list"] == "NEXT" or classify_date(t["due"], today_str) in ("overdue","today")]
-    seen = set(id(t) for t in col1)
-    col2 = [t for t in tasks if id(t) not in seen and t["list"] == "THIS WEEK"]
-    seen.update(id(t) for t in col2)
-    col3 = [t for t in tasks if id(t) not in seen]
+def render_task_card(t, today_str, compact=False):
+    title    = clean_title(t["title"])
+    due      = t["due"]
+    client   = t["client"]
+    context  = t["context"]
+    sender   = t["sender"]
 
-    priority_chips = "\n".join(f'<span class="priority-chip">{esc(p)}</span>' for p in priorities)
+    # Due badge
+    if due and due < today_str:
+        due_badge = f'<span class="badge overdue">{fmt_date(due)}</span>'
+    elif due == today_str:
+        due_badge = '<span class="badge today">Today</span>'
+    elif due:
+        due_badge = f'<span class="badge upcoming">{fmt_date(due)}</span>'
+    else:
+        due_badge = ""
+
+    # Priority dot
+    pri_dot = {"High": '<span class="dot high">●</span>', "Low": '<span class="dot low">●</span>'}.get(t["priority"], "")
+
+    # Client badge
+    col = client_colour(client)
+    client_badge = (
+        f'<span class="client-tag" style="background:{col}18;color:{col};border-color:{col}44">{esc(client)}</span>'
+        if client else ""
+    )
+
+    # Work type
+    wt_icon = WORK_TYPE_ICONS.get(t["work_type"], "")
+    wt_badge = f'<span class="wt-tag">{wt_icon} {esc(t["work_type"])}</span>' if t["work_type"] else ""
+
+    # Status
+    status_badge = '<span class="status-inprogress">In Progress</span>' if t["status"] == "In Progress" else ""
+
+    # Context snippet
+    ctx_html = ""
+    if context and not compact:
+        prefix = f"<em>{esc(sender)}:</em> " if sender else ""
+        snippet = esc(context[:180] + ("…" if len(context) > 180 else ""))
+        ctx_html = f'<div class="task-ctx">{prefix}{snippet}</div>'
+
+    open_link = f'<a class="open-link" href="{esc(t["url"])}" target="_blank">↗</a>'
+
+    if compact:
+        return (
+            f'<div class="task-row">'
+            f'<div class="task-row-left">{pri_dot}<span class="task-row-title">{esc(title)}</span></div>'
+            f'<div class="task-row-right">{due_badge}{client_badge}{open_link}</div>'
+            f'</div>'
+        )
+    return (
+        f'<div class="task-card">'
+        f'<div class="card-header"><div class="card-title">{pri_dot} {esc(title)}</div>{open_link}</div>'
+        f'<div class="card-meta">{due_badge}{status_badge}{client_badge}{wt_badge}</div>'
+        f'{ctx_html}'
+        f'</div>'
+    )
+
+
+def render_section(heading, icon, tasks, today_str, compact=False, colour="var(--accent)"):
+    if not tasks:
+        return ""
+    items = "\n".join(render_task_card(t, today_str, compact=compact) for t in tasks)
+    grid_class = "task-list" if compact else "task-grid"
+    return (
+        f'<section class="briefing-section">'
+        f'<div class="sec-head" style="color:{colour}">'
+        f'<span>{icon} {heading}</span><span class="sec-count">{len(tasks)}</span>'
+        f'</div>'
+        f'<div class="{grid_class}">{items}</div>'
+        f'</section>'
+    )
+
+
+# ── HTML ──────────────────────────────────────────────────────────────────────
+
+def build_html(overdue, today, waiting, this_week, later, summary, today_str):
     today_display  = datetime.strptime(today_str, "%Y-%m-%d").strftime("%A %-d %B %Y")
-    summary_html   = format_summary_html(summary)
     generated_time = datetime.utcnow().strftime("%H:%M UTC")
+    total          = len(overdue) + len(today) + len(waiting) + len(this_week) + len(later)
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -322,106 +405,94 @@ def build_html(tasks, summary, priorities, today_str):
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Daily Briefing · {today_display}</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
 <style>
-:root {{
-  --ink:#1a1a2e; --paper:#f5f0e8; --cream:#ede8dc;
-  --accent:#c8502a; --gold:#b08a20; --muted:#7a7468; --border:#d4cfc5;
-}}
+:root{{--ink:#1a1a2e;--paper:#f5f0e8;--cream:#ede8dc;--accent:#c8502a;--gold:#b08a20;--muted:#7a7468;--border:#d4cfc5;--card:#faf7f2;}}
 *{{box-sizing:border-box;margin:0;padding:0;}}
 body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);min-height:100vh;}}
-.masthead{{background:var(--ink);color:var(--paper);padding:28px 40px 22px;display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:12px;border-bottom:4px solid var(--accent);}}
-.masthead h1{{font-family:'Playfair Display',serif;font-size:2.6rem;letter-spacing:-0.5px;line-height:1;}}
-.edition{{font-size:.7rem;letter-spacing:3px;text-transform:uppercase;color:var(--accent);margin-top:7px;font-weight:500;}}
+.masthead{{background:var(--ink);color:var(--paper);padding:24px 48px 20px;display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:12px;border-bottom:4px solid var(--accent);}}
+.masthead h1{{font-family:'Playfair Display',serif;font-size:2.4rem;letter-spacing:-0.5px;line-height:1;}}
+.edition{{font-size:.65rem;letter-spacing:3px;text-transform:uppercase;color:var(--accent);margin-top:6px;font-weight:500;}}
 .mast-right{{text-align:right;}}
 .date-line{{font-family:'Playfair Display',serif;font-size:1rem;opacity:.85;}}
-.sub{{font-size:.68rem;letter-spacing:2px;text-transform:uppercase;opacity:.45;margin-top:5px;}}
-.gen-time{{font-size:.6rem;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,.3);margin-top:4px;}}
-.stats-bar{{background:var(--ink);display:flex;padding:16px 40px;border-top:1px solid rgba(255,255,255,.08);flex-wrap:wrap;gap:32px;}}
-.stat strong{{font-family:'Playfair Display',serif;font-size:1.8rem;display:block;line-height:1;color:var(--paper);}}
-.stat span{{font-size:.6rem;letter-spacing:2.5px;text-transform:uppercase;color:rgba(255,255,255,.35);}}
-.stat.red strong{{color:#e07a5a;}} .stat.gold strong{{color:#d4aa50;}}
-.ai-strip{{background:var(--cream);border-bottom:2px solid var(--border);padding:20px 40px;display:flex;gap:20px;align-items:flex-start;}}
-.ai-label{{font-size:.58rem;letter-spacing:3px;text-transform:uppercase;color:var(--gold);font-weight:600;white-space:nowrap;padding-top:3px;flex-shrink:0;}}
+.sub{{font-size:.65rem;letter-spacing:2px;text-transform:uppercase;opacity:.4;margin-top:4px;}}
+.gen-time{{font-size:.58rem;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,.25);margin-top:3px;}}
+.stats-bar{{background:var(--ink);display:flex;padding:14px 48px;border-top:1px solid rgba(255,255,255,.08);flex-wrap:wrap;gap:28px;}}
+.stat strong{{font-family:'Playfair Display',serif;font-size:1.7rem;display:block;line-height:1;color:var(--paper);}}
+.stat span{{font-size:.58rem;letter-spacing:2.5px;text-transform:uppercase;color:rgba(255,255,255,.3);}}
+.stat.red strong{{color:#e07a5a;}}.stat.gold strong{{color:#d4aa50;}}.stat.blue strong{{color:#93c5fd;}}
+.ai-strip{{background:var(--cream);border-bottom:2px solid var(--border);padding:20px 48px;display:flex;gap:24px;align-items:flex-start;}}
+.ai-label{{font-size:.55rem;letter-spacing:3px;text-transform:uppercase;color:var(--gold);font-weight:600;white-space:nowrap;padding-top:2px;flex-shrink:0;line-height:1.6;border-right:1px solid var(--border);padding-right:20px;}}
 .ai-body{{flex:1;}}
-.summary-heading{{font-size:.65rem;letter-spacing:2.5px;text-transform:uppercase;color:var(--accent);font-weight:600;margin:12px 0 4px;}}
-.summary-heading:first-child{{margin-top:0;}}
-.ai-body p{{font-size:.85rem;line-height:1.75;color:var(--ink);font-style:italic;margin-bottom:4px;}}
-.ai-priority{{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;}}
-.priority-chip{{font-size:.62rem;letter-spacing:1px;padding:3px 10px;border:1px solid var(--gold);color:var(--gold);background:rgba(176,138,32,.08);font-weight:500;}}
-.columns{{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;padding:0 40px 60px;}}
-.col{{padding:28px 24px 0;border-right:1px solid var(--border);animation:fadeUp .4s ease both;}}
-.col:first-child{{padding-left:0;}} .col:last-child{{border-right:none;padding-right:0;}}
-@keyframes fadeUp{{from{{opacity:0;transform:translateY(8px);}}to{{opacity:1;transform:translateY(0);}}}}
-.col-head{{font-size:.6rem;letter-spacing:4px;text-transform:uppercase;color:var(--accent);font-weight:600;border-bottom:2px solid var(--ink);padding-bottom:9px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:baseline;}}
-.col-count{{font-size:.75rem;color:var(--muted);letter-spacing:0;font-weight:400;font-family:'Playfair Display',serif;}}
-.task{{border-bottom:1px solid var(--border);padding:12px 0;}}
-.task:last-child{{border-bottom:none;}}
-.task-top{{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:5px;}}
-.task-title{{font-size:.83rem;font-weight:500;line-height:1.45;color:var(--ink);flex:1;}}
-.open-link{{font-size:.58rem;letter-spacing:1px;text-transform:uppercase;color:var(--muted);text-decoration:none;white-space:nowrap;border:1px solid var(--border);padding:2px 6px;flex-shrink:0;transition:all .15s;}}
-.open-link:hover{{background:var(--ink);color:var(--paper);border-color:var(--ink);}}
-.task-meta{{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}}
-.badge{{font-size:.56rem;letter-spacing:1.5px;text-transform:uppercase;font-weight:600;padding:2px 7px;border:1px solid;display:inline-block;}}
+.sum-head{{font-size:.6rem;letter-spacing:2.5px;text-transform:uppercase;color:var(--accent);font-weight:700;margin:10px 0 3px;}}
+.sum-head:first-child{{margin-top:0;}}
+.ai-body p{{font-size:.82rem;line-height:1.7;color:var(--ink);font-style:italic;margin-bottom:2px;}}
+.main{{padding:0 48px 60px;}}
+.briefing-section{{margin-top:32px;}}
+.sec-head{{font-size:.62rem;letter-spacing:3.5px;text-transform:uppercase;font-weight:700;border-bottom:2px solid var(--ink);padding-bottom:8px;margin-bottom:16px;display:flex;align-items:baseline;gap:8px;}}
+.sec-count{{font-family:'Playfair Display',serif;font-size:.8rem;color:var(--muted);letter-spacing:0;font-weight:400;margin-left:auto;}}
+.task-grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px;}}
+.task-card{{background:var(--card);border:1px solid var(--border);padding:14px 16px;border-radius:2px;transition:box-shadow .15s;}}
+.task-card:hover{{box-shadow:0 2px 12px rgba(0,0,0,.08);}}
+.card-header{{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:7px;}}
+.card-title{{font-size:.82rem;font-weight:500;line-height:1.45;color:var(--ink);flex:1;}}
+.open-link{{font-size:.8rem;color:var(--muted);text-decoration:none;opacity:.45;flex-shrink:0;transition:opacity .15s;padding:0 2px;}}
+.open-link:hover{{opacity:1;color:var(--ink);}}
+.card-meta{{display:flex;gap:5px;flex-wrap:wrap;align-items:center;}}
+.task-ctx{{font-size:.7rem;color:var(--muted);margin-top:7px;line-height:1.55;border-left:2px solid var(--border);padding-left:8px;}}
+.task-ctx em{{font-style:normal;font-weight:500;color:var(--ink);opacity:.7;}}
+.task-list{{display:flex;flex-direction:column;}}
+.task-row{{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);}}
+.task-row:last-child{{border-bottom:none;}}
+.task-row-left{{display:flex;align-items:baseline;gap:6px;flex:1;min-width:0;}}
+.task-row-title{{font-size:.8rem;font-weight:400;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}}
+.task-row-right{{display:flex;align-items:center;gap:5px;flex-shrink:0;}}
+.badge{{font-size:.54rem;letter-spacing:1px;text-transform:uppercase;font-weight:600;padding:2px 6px;border:1px solid;display:inline-block;white-space:nowrap;}}
 .badge.overdue{{color:var(--accent);border-color:var(--accent);background:rgba(200,80,42,.07);}}
-.badge.today{{color:var(--gold);border-color:var(--gold);background:rgba(176,138,32,.08);}}
+.badge.today{{color:var(--gold);border-color:var(--gold);background:rgba(176,138,32,.09);}}
 .badge.upcoming{{color:var(--muted);border-color:var(--border);}}
-.badge.no-date{{color:var(--border);border-color:var(--border);}}
-.list-tag{{font-size:.62rem;color:var(--muted);}}
-.client-badge{{font-size:.58rem;letter-spacing:1px;text-transform:uppercase;font-weight:600;padding:2px 7px;border:1px solid;display:inline-block;border-radius:2px;}}
-.priority-tag{{font-size:.56rem;letter-spacing:1px;text-transform:uppercase;font-weight:600;padding:2px 6px;border-radius:2px;}}
-.priority-tag.high{{color:#c8502a;background:rgba(200,80,42,.08);}}
-.priority-tag.low{{color:var(--muted);}}
-.task-note{{font-size:.71rem;color:var(--muted);margin-top:5px;line-height:1.5;border-left:2px solid var(--border);padding-left:8px;font-style:italic;}}
-.empty{{font-size:.8rem;color:var(--muted);font-style:italic;padding:12px 0;}}
-.footer{{text-align:center;padding:20px;font-size:.65rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;border-top:1px solid var(--border);}}
-.notion-badge{{display:inline-flex;align-items:center;gap:5px;font-size:.58rem;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.25);margin-top:6px;}}
+.client-tag{{font-size:.54rem;letter-spacing:.8px;text-transform:uppercase;font-weight:600;padding:2px 7px;border:1px solid;display:inline-block;border-radius:2px;white-space:nowrap;}}
+.wt-tag{{font-size:.58rem;color:var(--muted);padding:1px 5px;border:1px solid var(--border);background:rgba(0,0,0,.025);white-space:nowrap;}}
+.status-inprogress{{font-size:.54rem;letter-spacing:.5px;text-transform:uppercase;color:#0891b2;border:1px solid #0891b244;padding:2px 6px;background:#0891b209;}}
+.dot{{font-size:.55rem;margin-right:2px;line-height:1;flex-shrink:0;}}
+.dot.high{{color:var(--accent);}}.dot.low{{color:var(--border);}}
+.footer{{text-align:center;padding:20px;font-size:.62rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;border-top:1px solid var(--border);}}
 @media(max-width:860px){{
-  .masthead{{padding:20px;}} .stats-bar{{padding:14px 20px;gap:20px;}}
-  .ai-strip{{padding:16px 20px;flex-direction:column;gap:8px;}}
-  .columns{{grid-template-columns:1fr;padding:0 20px 40px;}}
-  .col{{padding:20px 0 0;border-right:none;border-bottom:1px solid var(--border);padding-bottom:20px;}}
-  .col:last-child{{border-bottom:none;}}
+  .masthead,.stats-bar,.ai-strip,.main{{padding-left:20px;padding-right:20px;}}
+  .task-grid{{grid-template-columns:1fr;}}
+  .ai-strip{{flex-direction:column;gap:10px;}}
+  .ai-label{{border-right:none;padding-right:0;border-bottom:1px solid var(--border);padding-bottom:10px;}}
 }}
 </style>
 </head>
 <body>
 <div class="masthead">
-  <div>
-    <h1>Daily Briefing</h1>
-    <div class="edition">Personal Edition · CBRE Copenhagen</div>
-  </div>
+  <div><h1>Daily Briefing</h1><div class="edition">Personal Edition · CBRE Copenhagen</div></div>
   <div class="mast-right">
     <div class="date-line">{today_display}</div>
     <div class="sub">Good morning, Joseph</div>
-    <div class="gen-time">Generated at {generated_time}</div>
-    <div class="notion-badge">✦ Powered by Notion</div>
+    <div class="gen-time">Generated {generated_time} · Notion</div>
   </div>
 </div>
-
 <div class="stats-bar">
-  <div class="stat red"><strong>{overdue_count}</strong><span>Overdue</span></div>
-  <div class="stat gold"><strong>{today_count}</strong><span>Due Today</span></div>
-  <div class="stat"><strong>{next_count}</strong><span>Next Actions</span></div>
-  <div class="stat"><strong>{waiting_count}</strong><span>Waiting</span></div>
-  <div class="stat"><strong>{total}</strong><span>Total Open</span></div>
+  <div class="stat red"><strong>{len(overdue)}</strong><span>Overdue</span></div>
+  <div class="stat gold"><strong>{len(today)}</strong><span>Today</span></div>
+  <div class="stat"><strong>{len(waiting)}</strong><span>Waiting On</span></div>
+  <div class="stat blue"><strong>{len(this_week)}</strong><span>This Week</span></div>
+  <div class="stat"><strong>{total}</strong><span>Total Active</span></div>
 </div>
-
 <div class="ai-strip">
-  <div class="ai-label">✦ AI<br>Summary</div>
-  <div class="ai-body">
-    {summary_html}
-    <div class="ai-priority">{priority_chips}</div>
-  </div>
+  <div class="ai-label">✦ AI<br>Briefing</div>
+  <div class="ai-body">{format_summary_html(summary)}</div>
 </div>
-
-<div class="columns">
-  {render_col('Priority · Next &amp; Today', col1, today_str, 0.05)}
-  {render_col('This Week', col2, today_str, 0.15)}
-  {render_col('Waiting · Inbox · Meeting Prep', col3, today_str, 0.25)}
+<div class="main">
+  {render_section("Today",      "⚡", today,     today_str, compact=False, colour="#b08a20")}
+  {render_section("Overdue",    "🔴", overdue,   today_str, compact=False, colour="#c8502a")}
+  {render_section("Waiting On", "⏳", waiting,   today_str, compact=True,  colour="#7a7468")}
+  {render_section("This Week",  "📅", this_week, today_str, compact=True,  colour="#2563eb")}
+  {render_section("Later",      "📂", later,     today_str, compact=True,  colour="#94a3b8")}
 </div>
-
-<div class="footer">Generated by GitHub Actions · {today_display} · {total} open tasks · Powered by Notion</div>
+<div class="footer">Generated by GitHub Actions · {today_display} · {total} active tasks · Powered by Notion</div>
 </body>
 </html>"""
 
@@ -430,28 +501,30 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
 
 if __name__ == "__main__":
     today_str = date.today().isoformat()
-    print(f"\n{'='*50}")
-    print(f"Daily Briefing Generator (Notion) — {today_str}")
-    print(f"{'='*50}")
+    print(f"\n{'='*55}")
+    print(f"Daily Briefing v2 (Notion) — {today_str}")
+    print(f"{'='*55}")
 
-    print("\nFetching tasks from Notion...")
-    tasks = fetch_all_tasks()
-    print(f"\nTotal: {len(tasks)} incomplete tasks fetched.")
+    print("\nBuilding client name map...")
+    client_map = build_client_map()
 
-    if len(tasks) == 0:
-        print("WARNING: No tasks found. Check NOTION_API_KEY and database permissions.")
+    print("\nFetching active tasks from Notion...")
+    tasks = fetch_all_tasks(client_map)
+
+    print("\nBucketing tasks...")
+    overdue, today, waiting, this_week, later = bucket_tasks(tasks, today_str)
+    print(f"  Today:{len(today)}  Overdue:{len(overdue)}  Waiting:{len(waiting)}  "
+          f"This Week:{len(this_week)}  Later:{len(later)}")
 
     print("\nGenerating AI summary...")
-    summary = generate_summary(tasks)
-    print(f"Summary generated ({len(summary)} chars).")
-
-    priorities = extract_priorities(tasks, today_str)
+    summary = generate_summary(overdue, today, waiting, this_week, today_str)
+    print(f"  Done ({len(summary)} chars)")
 
     print("\nBuilding HTML...")
-    html = build_html(tasks, summary, priorities, today_str)
+    html = build_html(overdue, today, waiting, this_week, later, summary, today_str)
 
     with open("index.html", "w", encoding="utf-8") as f:
         f.write(html)
 
-    print(f"Done. index.html written ({len(html)} bytes).")
-    print(f"{'='*50}\n")
+    print(f"  index.html written ({len(html):,} bytes)")
+    print(f"{'='*55}\n")
