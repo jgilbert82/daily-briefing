@@ -360,17 +360,21 @@ def render_task_card(t, today_str, compact=False):
         ctx_html = f'<div class="task-ctx">{prefix}{snippet}</div>'
 
     open_link = f'<a class="open-link" href="{esc(t["url"])}" target="_blank">↗</a>'
+    add_btn   = f'<button class="add-day-btn" onclick="addToMyDay(this)" data-title="{esc(title)}" data-client="{esc(client or "")}">+ My Day</button>'
 
     if compact:
         return (
             f'<div class="task-row">'
             f'<div class="task-row-left">{pri_dot}<span class="task-row-title">{esc(title)}</span></div>'
-            f'<div class="task-row-right">{due_badge}{client_badge}{open_link}</div>'
+            f'<div class="task-row-right">{due_badge}{client_badge}'
+            f'<button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="{esc(title)}" data-client="{esc(client or "")}">+</button>'
+            f'{open_link}</div>'
             f'</div>'
         )
     return (
         f'<div class="task-card">'
-        f'<div class="card-header"><div class="card-title">{pri_dot} {esc(title)}</div>{open_link}</div>'
+        f'<div class="card-header"><div class="card-title">{pri_dot} {esc(title)}</div>'
+        f'<div class="card-actions">{add_btn}{open_link}</div></div>'
         f'<div class="card-meta">{due_badge}{status_badge}{client_badge}{wt_badge}</div>'
         f'{ctx_html}'
         f'</div>'
@@ -457,11 +461,70 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
 .dot{{font-size:.55rem;margin-right:2px;line-height:1;flex-shrink:0;}}
 .dot.high{{color:var(--accent);}}.dot.low{{color:var(--border);}}
 .footer{{text-align:center;padding:20px;font-size:.62rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;border-top:1px solid var(--border);}}
+.card-actions{{display:flex;align-items:center;gap:6px;flex-shrink:0;}}
+.add-day-btn{{font-size:.54rem;letter-spacing:.8px;text-transform:uppercase;font-weight:600;
+  color:var(--gold);border:1px solid var(--gold);background:rgba(176,138,32,.06);
+  padding:2px 7px;cursor:pointer;white-space:nowrap;transition:all .15s;}}
+.add-day-btn:hover{{background:var(--gold);color:var(--paper);}}
+.add-day-btn.added{{color:var(--muted);border-color:var(--border);background:transparent;cursor:default;}}
+.add-day-btn-sm{{font-size:.65rem;font-weight:700;color:var(--gold);border:1px solid var(--gold);
+  background:rgba(176,138,32,.06);padding:1px 6px;cursor:pointer;transition:all .15s;line-height:1.4;}}
+.add-day-btn-sm:hover{{background:var(--gold);color:var(--paper);}}
+.add-day-btn-sm.added{{color:var(--border);border-color:var(--border);background:transparent;cursor:default;}}
+
+/* ── MY DAY PANEL ── */
+#my-day-panel{{
+  position:fixed;bottom:24px;right:24px;width:340px;
+  background:var(--ink);color:var(--paper);border-radius:4px;
+  box-shadow:0 8px 32px rgba(0,0,0,.35);z-index:1000;
+  transition:all .2s ease;font-family:'DM Sans',sans-serif;
+}}
+#my-day-panel.collapsed{{width:160px;}}
+#my-day-header{{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 16px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.1);
+  user-select:none;
+}}
+#my-day-title{{font-size:.6rem;letter-spacing:2.5px;text-transform:uppercase;font-weight:600;color:var(--gold);}}
+#my-day-count{{font-family:'Playfair Display',serif;font-size:1rem;color:var(--paper);margin-left:8px;}}
+#my-day-toggle{{font-size:.7rem;color:rgba(255,255,255,.4);margin-left:auto;}}
+#my-day-body{{padding:12px 16px;display:block;}}
+#my-day-panel.collapsed #my-day-body{{display:none;}}
+#my-day-list{{list-style:none;margin-bottom:12px;min-height:32px;}}
+#my-day-list li{{
+  display:flex;align-items:flex-start;gap:8px;padding:7px 0;
+  border-bottom:1px solid rgba(255,255,255,.08);cursor:grab;
+  font-size:.75rem;line-height:1.4;
+}}
+#my-day-list li:last-child{{border-bottom:none;}}
+#my-day-list li.dragging{{opacity:.4;}}
+#my-day-list li.drag-over{{border-top:2px solid var(--gold);}}
+.day-num{{font-family:'Playfair Display',serif;font-size:.8rem;color:var(--gold);
+  flex-shrink:0;width:16px;text-align:right;margin-top:1px;}}
+.day-text{{flex:1;}}
+.day-client{{font-size:.6rem;letter-spacing:.5px;color:rgba(255,255,255,.35);display:block;margin-top:1px;}}
+.day-remove{{font-size:.7rem;color:rgba(255,255,255,.25);cursor:pointer;flex-shrink:0;
+  padding:0 2px;line-height:1;transition:color .15s;margin-top:1px;}}
+.day-remove:hover{{color:#e07a5a;}}
+#my-day-empty{{font-size:.72rem;color:rgba(255,255,255,.3);font-style:italic;padding:4px 0 8px;}}
+.day-actions{{display:flex;gap:8px;}}
+.day-btn{{flex:1;font-size:.58rem;letter-spacing:1px;text-transform:uppercase;font-weight:600;
+  padding:6px 10px;cursor:pointer;border:none;transition:all .15s;}}
+#btn-copy{{background:var(--gold);color:var(--ink);}}
+#btn-copy:hover{{background:#c8a020;}}
+#btn-clear{{background:rgba(255,255,255,.08);color:rgba(255,255,255,.5);}}
+#btn-clear:hover{{background:rgba(255,255,255,.15);color:var(--paper);}}
+#copy-confirm{{font-size:.6rem;color:var(--gold);text-align:center;margin-top:8px;
+  height:14px;opacity:0;transition:opacity .3s;}}
+#copy-confirm.show{{opacity:1;}}
+
 @media(max-width:860px){{
   .masthead,.stats-bar,.ai-strip,.main{{padding-left:20px;padding-right:20px;}}
   .task-grid{{grid-template-columns:1fr;}}
   .ai-strip{{flex-direction:column;gap:10px;}}
   .ai-label{{border-right:none;padding-right:0;border-bottom:1px solid var(--border);padding-bottom:10px;}}
+  #my-day-panel{{width:calc(100vw - 32px);right:16px;bottom:16px;}}
+  #my-day-panel.collapsed{{width:140px;}}
 }}
 </style>
 </head>
@@ -493,6 +556,146 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
   {render_section("Later",      "📂", later,     today_str, compact=True,  colour="#94a3b8")}
 </div>
 <div class="footer">Generated by GitHub Actions · {today_display} · {total} active tasks · Powered by Notion</div>
+
+<!-- ── MY DAY PANEL ── -->
+<div id="my-day-panel" class="collapsed">
+  <div id="my-day-header" onclick="togglePanel()">
+    <span id="my-day-title">✦ My Day</span>
+    <span id="my-day-count">0</span>
+    <span id="my-day-toggle">▲</span>
+  </div>
+  <div id="my-day-body">
+    <ul id="my-day-list"></ul>
+    <p id="my-day-empty">Click "+ My Day" on any task to build your list.</p>
+    <div class="day-actions">
+      <button class="day-btn" id="btn-copy" onclick="copyList()">Copy List</button>
+      <button class="day-btn" id="btn-clear" onclick="clearList()">Clear</button>
+    </div>
+    <div id="copy-confirm">✓ Copied to clipboard</div>
+  </div>
+</div>
+
+<script>
+  var items = [];
+  var dragSrc = null;
+
+  function togglePanel() {{
+    var p = document.getElementById('my-day-panel');
+    var t = document.getElementById('my-day-toggle');
+    var collapsed = p.classList.toggle('collapsed');
+    t.textContent = collapsed ? '▲' : '▼';
+  }}
+
+  function addToMyDay(btn) {{
+    if (btn.classList.contains('added')) return;
+    var title  = btn.getAttribute('data-title');
+    var client = btn.getAttribute('data-client');
+    if (items.some(function(i) {{ return i.title === title; }})) return;
+    items.push({{ title: title, client: client }});
+    btn.classList.add('added');
+    btn.textContent = btn.classList.contains('add-day-btn-sm') ? '✓' : '✓ Added';
+
+    // Also mark any duplicate button for same task
+    document.querySelectorAll('[data-title="' + title.replace(/"/g, '\\"') + '"]').forEach(function(el) {{
+      if (el.classList.contains('add-day-btn') || el.classList.contains('add-day-btn-sm')) {{
+        el.classList.add('added');
+        el.textContent = el.classList.contains('add-day-btn-sm') ? '✓' : '✓ Added';
+      }}
+    }});
+
+    renderList();
+
+    // Open panel if collapsed
+    var p = document.getElementById('my-day-panel');
+    if (p.classList.contains('collapsed')) {{
+      p.classList.remove('collapsed');
+      document.getElementById('my-day-toggle').textContent = '▼';
+    }}
+  }}
+
+  function removeItem(idx) {{
+    var removed = items.splice(idx, 1)[0];
+    // Re-enable the add buttons for this task
+    document.querySelectorAll('[data-title="' + removed.title.replace(/"/g, '\\"') + '"]').forEach(function(el) {{
+      if (el.classList.contains('add-day-btn') || el.classList.contains('add-day-btn-sm')) {{
+        el.classList.remove('added');
+        el.textContent = el.classList.contains('add-day-btn-sm') ? '+' : '+ My Day';
+      }}
+    }});
+    renderList();
+  }}
+
+  function renderList() {{
+    var ul = document.getElementById('my-day-list');
+    var empty = document.getElementById('my-day-empty');
+    document.getElementById('my-day-count').textContent = items.length;
+    ul.innerHTML = '';
+    if (items.length === 0) {{ empty.style.display = 'block'; return; }}
+    empty.style.display = 'none';
+    items.forEach(function(item, idx) {{
+      var li = document.createElement('li');
+      li.draggable = true;
+      li.dataset.idx = idx;
+      li.innerHTML =
+        '<span class="day-num">' + (idx+1) + '</span>' +
+        '<span class="day-text">' + escHtml(item.title) +
+          (item.client ? '<span class="day-client">' + escHtml(item.client) + '</span>' : '') +
+        '</span>' +
+        '<span class="day-remove" onclick="removeItem(' + idx + ')" title="Remove">✕</span>';
+
+      li.addEventListener('dragstart', function(e) {{
+        dragSrc = idx;
+        setTimeout(function() {{ li.classList.add('dragging'); }}, 0);
+        e.dataTransfer.effectAllowed = 'move';
+      }});
+      li.addEventListener('dragend', function() {{ li.classList.remove('dragging'); renderList(); }});
+      li.addEventListener('dragover', function(e) {{
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        ul.querySelectorAll('li').forEach(function(l) {{ l.classList.remove('drag-over'); }});
+        li.classList.add('drag-over');
+      }});
+      li.addEventListener('drop', function(e) {{
+        e.preventDefault();
+        if (dragSrc === null || dragSrc === idx) return;
+        var moved = items.splice(dragSrc, 1)[0];
+        items.splice(idx, 0, moved);
+        dragSrc = null;
+        renderList();
+      }});
+      ul.appendChild(li);
+    }});
+  }}
+
+  function copyList() {{
+    if (items.length === 0) return;
+    var today = new Date().toLocaleDateString('en-GB', {{weekday:'long',day:'numeric',month:'long',year:'numeric'}});
+    var text = 'My Day — ' + today + '\\n\\n';
+    items.forEach(function(item, idx) {{
+      text += (idx+1) + '. ' + item.title;
+      if (item.client) text += ' [' + item.client + ']';
+      text += '\\n';
+    }});
+    navigator.clipboard.writeText(text).then(function() {{
+      var c = document.getElementById('copy-confirm');
+      c.classList.add('show');
+      setTimeout(function() {{ c.classList.remove('show'); }}, 2000);
+    }});
+  }}
+
+  function clearList() {{
+    items = [];
+    document.querySelectorAll('.add-day-btn.added, .add-day-btn-sm.added').forEach(function(btn) {{
+      btn.classList.remove('added');
+      btn.textContent = btn.classList.contains('add-day-btn-sm') ? '+' : '+ My Day';
+    }});
+    renderList();
+  }}
+
+  function escHtml(s) {{
+    return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }}
+</script>
 </body>
 </html>"""
 
