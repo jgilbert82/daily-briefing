@@ -23,6 +23,9 @@ NOTION_TASKS_DB   = "d5669af6-6732-432b-b1ac-558a860164ca"
 NOTION_CLIENTS_DB = "81b6953304db4b76ba7a25a9704fe7b2"
 NOTION_VERSION    = "2022-06-28"
 
+# Your Cloudflare Worker URL — fill in after deploying worker.js
+WORKER_URL = "https://notion-proxy.jgilbert82.workers.dev"
+
 CLIENT_COLOURS = {
     "AEW":           "#2563eb",
     "SSCP":          "#16a34a",
@@ -359,22 +362,25 @@ def render_task_card(t, today_str, compact=False):
         snippet = esc(context[:180] + ("…" if len(context) > 180 else ""))
         ctx_html = f'<div class="task-ctx">{prefix}{snippet}</div>'
 
-    open_link = f'<a class="open-link" href="{esc(t["url"])}" target="_blank">↗</a>'
-    add_btn   = f'<button class="add-day-btn" onclick="addToMyDay(this)" data-title="{esc(title)}" data-client="{esc(client or "")}">+ My Day</button>'
+    page_id   = t["id"]
+    open_link = '<a class="open-link" href="' + esc(t['url']) + '" target="_blank">↗</a>'
+    add_btn   = '<button class="add-day-btn" onclick="addToMyDay(this)" data-title="' + esc(title) + '" data-client="' + esc(client or '') + '">+ My Day</button>'
+    done_btn  = '<button class="done-btn" onclick="markDone(this)" data-page-id="' + page_id + '">✓ Done</button>'
 
     if compact:
         return (
-            f'<div class="task-row">'
+            f'<div class="task-row" data-page-id="{page_id}">'
             f'<div class="task-row-left">{pri_dot}<span class="task-row-title">{esc(title)}</span></div>'
             f'<div class="task-row-right">{due_badge}{client_badge}'
+            f'<button class="done-btn-sm" onclick="markDone(this)" data-page-id="{page_id}">✓</button>'
             f'<button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="{esc(title)}" data-client="{esc(client or "")}">+</button>'
             f'{open_link}</div>'
             f'</div>'
         )
     return (
-        f'<div class="task-card">'
+        f'<div class="task-card" data-page-id="{page_id}">'
         f'<div class="card-header"><div class="card-title">{pri_dot} {esc(title)}</div>'
-        f'<div class="card-actions">{add_btn}{open_link}</div></div>'
+        f'<div class="card-actions">{done_btn}{add_btn}{open_link}</div></div>'
         f'<div class="card-meta">{due_badge}{status_badge}{client_badge}{wt_badge}</div>'
         f'{ctx_html}'
         f'</div>'
@@ -471,6 +477,13 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
   background:rgba(176,138,32,.06);padding:1px 6px;cursor:pointer;transition:all .15s;line-height:1.4;}}
 .add-day-btn-sm:hover{{background:var(--gold);color:var(--paper);}}
 .add-day-btn-sm.added{{color:var(--border);border-color:var(--border);background:transparent;cursor:default;}}
+.done-btn{{font-size:.54rem;letter-spacing:.8px;text-transform:uppercase;font-weight:600;color:#16a34a;border:1px solid #16a34a;background:rgba(22,163,74,.06);padding:2px 7px;cursor:pointer;white-space:nowrap;transition:all .15s;}}
+.done-btn:hover{{background:#16a34a;color:var(--paper);}}
+.done-btn.saving{{color:var(--muted);border-color:var(--border);cursor:default;background:transparent;}}
+.done-btn-sm{{font-size:.65rem;font-weight:700;color:#16a34a;border:1px solid #16a34a;background:rgba(22,163,74,.06);padding:1px 6px;cursor:pointer;transition:all .15s;line-height:1.4;}}
+.done-btn-sm:hover{{background:#16a34a;color:var(--paper);}}
+.done-btn-sm.saving{{color:var(--muted);border-color:var(--border);background:transparent;cursor:default;}}
+.task-card.done-fade,.task-row.done-fade{{opacity:0;transform:translateY(-3px);transition:all .5s ease;pointer-events:none;}}
 
 /* ── MY DAY PANEL ── */
 #my-day-panel{{
@@ -694,6 +707,37 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
 
   function escHtml(s) {{
     return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }}
+
+  var WORKER_URL = "{WORKER_URL}";
+
+  function markDone(btn) {{
+    if (btn.classList.contains('saving')) return;
+    var pageId = btn.getAttribute('data-page-id');
+    var card   = btn.closest('.task-card, .task-row');
+
+    btn.classList.add('saving');
+    btn.textContent = btn.classList.contains('done-btn-sm') ? '…' : 'Saving…';
+
+    fetch(WORKER_URL, {{
+      method: 'POST',
+      headers: {{ 'Content-Type': 'application/json' }},
+      body: JSON.stringify({{ pageId: pageId, action: 'done' }})
+    }})
+    .then(function(r) {{ return r.json(); }})
+    .then(function(data) {{
+      if (data.ok) {{
+        btn.textContent = btn.classList.contains('done-btn-sm') ? '✓' : '✓ Done';
+        if (card) card.classList.add('done-fade');
+      }} else {{
+        btn.textContent = 'Error';
+        btn.style.color = 'var(--accent)';
+      }}
+    }})
+    .catch(function() {{
+      btn.textContent = 'Error';
+      btn.style.color = 'var(--accent)';
+    }});
   }}
 </script>
 </body>
