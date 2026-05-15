@@ -427,6 +427,13 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
 .date-line{{font-family:'Playfair Display',serif;font-size:1rem;opacity:.85;}}
 .sub{{font-size:.65rem;letter-spacing:2px;text-transform:uppercase;opacity:.4;margin-top:4px;}}
 .gen-time{{font-size:.58rem;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,.25);margin-top:3px;}}
+.refresh-btn{{font-size:.55rem;letter-spacing:1.5px;text-transform:uppercase;font-weight:600;
+  color:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.15);background:transparent;
+  padding:3px 10px;cursor:pointer;margin-top:6px;transition:all .2s;display:inline-block;}}
+.refresh-btn:hover{{color:var(--paper);border-color:rgba(255,255,255,.5);background:rgba(255,255,255,.08);}}
+.refresh-btn.spinning{{color:rgba(255,255,255,.25);border-color:rgba(255,255,255,.1);cursor:default;}}
+.refresh-btn.done{{color:#4ade80;border-color:#4ade8055;}}
+.refresh-btn.error{{color:#e07a5a;border-color:#e07a5a55;}}
 .stats-bar{{background:var(--ink);display:flex;padding:14px 48px;border-top:1px solid rgba(255,255,255,.08);flex-wrap:wrap;gap:28px;}}
 .stat strong{{font-family:'Playfair Display',serif;font-size:1.7rem;display:block;line-height:1;color:var(--paper);}}
 .stat span{{font-size:.58rem;letter-spacing:2.5px;text-transform:uppercase;color:rgba(255,255,255,.3);}}
@@ -548,6 +555,7 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
     <div class="date-line">{today_display}</div>
     <div class="sub">Good morning, Joseph</div>
     <div class="gen-time">Generated {generated_time} · Notion</div>
+    <button class="refresh-btn" id="refresh-btn" onclick="triggerRefresh()">↻ Refresh</button>
   </div>
 </div>
 <div class="stats-bar">
@@ -707,6 +715,48 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
 
   function escHtml(s) {{
     return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }}
+
+  function triggerRefresh() {{
+    var btn = document.getElementById('refresh-btn');
+    if (btn.classList.contains('spinning')) return;
+    btn.classList.add('spinning');
+    btn.textContent = '↻ Refreshing…';
+
+    fetch(WORKER_URL + '/refresh', {{
+      method: 'POST',
+      headers: {{ 'Content-Type': 'application/json' }},
+      body: JSON.stringify({{}})
+    }})
+    .then(function(r) {{ return r.json(); }})
+    .then(function(data) {{
+      if (data.ok) {{
+        btn.classList.remove('spinning');
+        btn.classList.add('done');
+        btn.textContent = '✓ Building… reload in ~30s';
+        setTimeout(function() {{
+          btn.classList.remove('done');
+          btn.textContent = '↻ Refresh';
+        }}, 35000);
+      }} else {{
+        btn.classList.remove('spinning');
+        btn.classList.add('error');
+        btn.textContent = '✗ Failed';
+        setTimeout(function() {{
+          btn.classList.remove('error');
+          btn.textContent = '↻ Refresh';
+        }}, 4000);
+      }}
+    }})
+    .catch(function() {{
+      btn.classList.remove('spinning');
+      btn.classList.add('error');
+      btn.textContent = '✗ Failed';
+      setTimeout(function() {{
+        btn.classList.remove('error');
+        btn.textContent = '↻ Refresh';
+      }}, 4000);
+    }});
   }}
 
   var WORKER_URL = "{WORKER_URL}";
