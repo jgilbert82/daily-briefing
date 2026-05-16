@@ -15,7 +15,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 CLIENT_ID     = "YOUR_CLIENT_ID_HERE"
 CLIENT_SECRET = "YOUR_CLIENT_SECRET_HERE"
 
-SCOPES = ["https://www.googleapis.com/auth/tasks.readonly"]
+SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
 
 client_config = {
     "installed": {
