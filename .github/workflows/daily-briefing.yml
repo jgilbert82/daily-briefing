@@ -4,7 +4,7 @@ on:
   schedule:
     # 05:00 UTC = 06:00 Copenhagen (winter/CET)
     # Change to '0 4 * * 1-5' for summer (CEST, UTC+2)
-    - cron: '0 4 * * 1-5'
+    - cron: '0 5 * * 1-5'
   workflow_dispatch:
   repository_dispatch:
     types: [refresh-briefing]
@@ -23,7 +23,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install requests anthropic
+        run: pip install requests anthropic google-auth google-auth-httplib2 google-api-python-client
 
       - name: Generate briefing
         env:
