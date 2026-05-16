@@ -413,6 +413,101 @@ def format_summary_html(text):
     return "\n".join(parts)
 
 
+
+# ── CLIENT SUMMARY ────────────────────────────────────────────────────────────
+
+def render_client_summary(tasks):
+    """Render a collapsible client breakdown showing task counts by status."""
+    from collections import defaultdict
+
+    # Build per-client counts
+    client_data = defaultdict(lambda: {"total": 0, "overdue": 0, "today": 0, "waiting": 0, "high": 0})
+    no_client = {"total": 0, "overdue": 0, "today": 0, "waiting": 0, "high": 0}
+
+    today_str = __import__("datetime").date.today().isoformat()
+
+    for t in tasks:
+        c = t.get("client") or ""
+        d = client_data[c] if c else no_client
+        d["total"] += 1
+        if t["status"] == "Waiting":
+            d["waiting"] += 1
+        due = t.get("due") or ""
+        if due and due < today_str:
+            d["overdue"] += 1
+        elif due == today_str:
+            d["today"] += 1
+        if t.get("priority") == "High":
+            d["high"] += 1
+
+    # Sort by total desc
+    rows = sorted(client_data.items(), key=lambda x: -x[1]["total"])
+
+    def colour(name):
+        CLIENT_COLOURS_LOCAL = {
+            "AEW": "#2563eb", "SSCP": "#16a34a", "Ingka": "#d97706",
+            "Hedeland": "#d97706", "Mileway": "#7c3aed", "AXA": "#0891b2",
+            "Arrow": "#dc2626", "EQT": "#be185d", "M&G": "#065f46",
+            "BNPP": "#1d4ed8", "CBRE Internal": "#64748b",
+        }
+        for k, v in CLIENT_COLOURS_LOCAL.items():
+            if k.lower() in (name or "").lower():
+                return v
+        return "#64748b"
+
+    def pill(label, value, col="#64748b"):
+        if not value:
+            return ""
+        return f'<span class="cs-pill" style="background:{col}18;color:{col};border-color:{col}44">{label} {value}</span>'
+
+    rows_html = ""
+    for name, d in rows:
+        if not name:
+            continue
+        col = colour(name)
+        pills = ""
+        if d["overdue"]:
+            pills += pill("Overdue", d["overdue"], "#c8502a")
+        if d["today"]:
+            pills += pill("Today", d["today"], "#b08a20")
+        if d["waiting"]:
+            pills += pill("Waiting", d["waiting"], "#7a7468")
+        if d["high"]:
+            pills += pill("High", d["high"], "#c8502a")
+
+        rows_html += f'''<div class="cs-row">
+  <div class="cs-name" style="color:{col}">{esc(name)}</div>
+  <div class="cs-pills">{pills}</div>
+  <div class="cs-total" style="color:{col}">{d["total"]}</div>
+</div>'''
+
+    # Add no-client row if any
+    if no_client["total"]:
+        pills = ""
+        if no_client["overdue"]:
+            pills += pill("Overdue", no_client["overdue"], "#c8502a")
+        if no_client["waiting"]:
+            pills += pill("Waiting", no_client["waiting"], "#7a7468")
+        rows_html += f'''<div class="cs-row">
+  <div class="cs-name" style="color:var(--muted)">No client</div>
+  <div class="cs-pills">{pills}</div>
+  <div class="cs-total" style="color:var(--muted)">{no_client["total"]}</div>
+</div>'''
+
+    total_clients = len([r for r in rows if r[0]])
+    return f'''<div class="client-summary" id="cs-wrapper">
+  <button class="cs-toggle" onclick="toggleCS()" id="cs-btn">
+    <span>▸ Clients ({total_clients})</span>
+    <span class="cs-hint">click to expand</span>
+  </button>
+  <div class="cs-body" id="cs-body" style="display:none">
+    <div class="cs-header">
+      <span>Client</span><span></span><span style="text-align:right">Open</span>
+    </div>
+    {rows_html}
+  </div>
+</div>'''
+
 # ── RENDERING ─────────────────────────────────────────────────────────────────
 
 def render_task_card(t, today_str, compact=False):
@@ -519,7 +614,9 @@ def render_calendar_strip(events):
 
 def build_html(overdue, today, waiting, this_week, later, summary, today_str, calendar_events=None):
     today_display   = datetime.strptime(today_str, "%Y-%m-%d").strftime("%A %-d %B %Y")
-    calendar_strip  = render_calendar_strip(calendar_events or [])
+    calendar_strip       = render_calendar_strip(calendar_events or [])
+    all_tasks            = overdue + today + waiting + this_week + later
+    client_summary_html  = render_client_summary(all_tasks)
     generated_time  = datetime.utcnow().strftime("%H:%M UTC")
     total          = len(overdue) + len(today) + len(waiting) + len(this_week) + len(later)
 
@@ -587,6 +684,18 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
 .status-inprogress{{font-size:.54rem;letter-spacing:.5px;text-transform:uppercase;color:#0891b2;border:1px solid #0891b244;padding:2px 6px;background:#0891b209;}}
 .dot{{font-size:.55rem;margin-right:2px;line-height:1;flex-shrink:0;}}
 .dot.high{{color:var(--accent);}}.dot.low{{color:var(--border);}}
+.client-summary{{background:var(--cream);border-bottom:1px solid var(--border);}}
+.cs-toggle{{width:100%;background:none;border:none;padding:10px 48px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-size:.6rem;letter-spacing:2.5px;text-transform:uppercase;font-weight:600;color:var(--ink);transition:background .15s;text-align:left;}}
+.cs-toggle:hover{{background:rgba(0,0,0,.03);}}
+.cs-hint{{font-size:.55rem;letter-spacing:1px;color:var(--muted);font-weight:400;text-transform:none;}}
+.cs-body{{padding:0 48px 14px;}}
+.cs-header{{display:grid;grid-template-columns:160px 1fr 40px;font-size:.54rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);padding:6px 0;border-bottom:1px solid var(--border);margin-bottom:4px;}}
+.cs-row{{display:grid;grid-template-columns:160px 1fr 40px;align-items:center;padding:5px 0;border-bottom:1px solid rgba(0,0,0,.04);}}
+.cs-row:last-child{{border-bottom:none;}}
+.cs-name{{font-size:.72rem;font-weight:600;letter-spacing:.5px;}}
+.cs-pills{{display:flex;gap:5px;flex-wrap:wrap;}}
+.cs-pill{{font-size:.52rem;letter-spacing:.8px;text-transform:uppercase;font-weight:600;padding:2px 6px;border:1px solid;border-radius:2px;white-space:nowrap;}}
+.cs-total{{font-family:'Playfair Display',serif;font-size:1rem;text-align:right;font-weight:400;}}
 .cal-strip{{background:#f0f4ff;border-bottom:2px solid var(--border);padding:14px 48px;display:flex;align-items:flex-start;gap:20px;}}
 .cal-label{{font-size:.55rem;letter-spacing:3px;text-transform:uppercase;color:#2563eb;font-weight:600;white-space:nowrap;padding-top:4px;flex-shrink:0;border-right:1px solid var(--border);padding-right:20px;}}
 .cal-events{{display:flex;gap:10px;flex-wrap:wrap;flex:1;}}
@@ -687,6 +796,7 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
   <div class="stat blue"><strong>{len(this_week)}</strong><span>This Week</span></div>
   <div class="stat"><strong>{total}</strong><span>Total Active</span></div>
 </div>
+{client_summary_html}
 {calendar_strip}
 <div class="ai-strip">
   <div class="ai-label">✦ AI<br>Briefing</div>
@@ -838,6 +948,15 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
 
   function escHtml(s) {{
     return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }}
+
+  function toggleCS() {{
+    var body = document.getElementById('cs-body');
+    var btn  = document.getElementById('cs-btn');
+    var open = body.style.display === 'none';
+    body.style.display = open ? 'block' : 'none';
+    btn.querySelector('span').textContent = (open ? '▾ ' : '▸ ') + btn.querySelector('span').textContent.slice(2);
+    btn.querySelector('.cs-hint').textContent = open ? 'click to collapse' : 'click to expand';
   }}
 
   function triggerRefresh() {{
