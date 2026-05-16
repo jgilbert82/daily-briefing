@@ -62,6 +62,18 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
 .status-inprogress{font-size:.54rem;letter-spacing:.5px;text-transform:uppercase;color:#0891b2;border:1px solid #0891b244;padding:2px 6px;background:#0891b209;}
 .dot{font-size:.55rem;margin-right:2px;line-height:1;flex-shrink:0;}
 .dot.high{color:var(--accent);}.dot.low{color:var(--border);}
+.client-summary{background:var(--cream);border-bottom:1px solid var(--border);}
+.cs-toggle{width:100%;background:none;border:none;padding:10px 48px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-size:.6rem;letter-spacing:2.5px;text-transform:uppercase;font-weight:600;color:var(--ink);transition:background .15s;text-align:left;}
+.cs-toggle:hover{background:rgba(0,0,0,.03);}
+.cs-hint{font-size:.55rem;letter-spacing:1px;color:var(--muted);font-weight:400;text-transform:none;}
+.cs-body{padding:0 48px 14px;}
+.cs-header{display:grid;grid-template-columns:160px 1fr 40px;font-size:.54rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);padding:6px 0;border-bottom:1px solid var(--border);margin-bottom:4px;}
+.cs-row{display:grid;grid-template-columns:160px 1fr 40px;align-items:center;padding:5px 0;border-bottom:1px solid rgba(0,0,0,.04);}
+.cs-row:last-child{border-bottom:none;}
+.cs-name{font-size:.72rem;font-weight:600;letter-spacing:.5px;}
+.cs-pills{display:flex;gap:5px;flex-wrap:wrap;}
+.cs-pill{font-size:.52rem;letter-spacing:.8px;text-transform:uppercase;font-weight:600;padding:2px 6px;border:1px solid;border-radius:2px;white-space:nowrap;}
+.cs-total{font-family:'Playfair Display',serif;font-size:1rem;text-align:right;font-weight:400;}
 .cal-strip{background:#f0f4ff;border-bottom:2px solid var(--border);padding:14px 48px;display:flex;align-items:flex-start;gap:20px;}
 .cal-label{font-size:.55rem;letter-spacing:3px;text-transform:uppercase;color:#2563eb;font-weight:600;white-space:nowrap;padding-top:4px;flex-shrink:0;border-right:1px solid var(--border);padding-right:20px;}
 .cal-events{display:flex;gap:10px;flex-wrap:wrap;flex:1;}
@@ -151,7 +163,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
   <div class="mast-right">
     <div class="date-line">Saturday 16 May 2026</div>
     <div class="sub">Good morning, Joseph</div>
-    <div class="gen-time">Generated 14:03 UTC · Notion</div>
+    <div class="gen-time">Generated 14:25 UTC · Notion</div>
     <button class="refresh-btn" id="refresh-btn" onclick="triggerRefresh()">↻ Refresh</button>
   </div>
 </div>
@@ -162,15 +174,67 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
   <div class="stat blue"><strong>5</strong><span>This Week</span></div>
   <div class="stat"><strong>43</strong><span>Total Active</span></div>
 </div>
+<div class="client-summary" id="cs-wrapper">
+  <button class="cs-toggle" onclick="toggleCS()" id="cs-btn">
+    <span>▸ Clients (9)</span>
+    <span class="cs-hint">click to expand</span>
+  </button>
+  <div class="cs-body" id="cs-body" style="display:none">
+    <div class="cs-header">
+      <span>Client</span><span></span><span style="text-align:right">Open</span>
+    </div>
+    <div class="cs-row">
+  <div class="cs-name" style="color:#2563eb">AEWSYD</div>
+  <div class="cs-pills"><span class="cs-pill" style="background:#c8502a18;color:#c8502a;border-color:#c8502a44">Overdue 9</span><span class="cs-pill" style="background:#7a746818;color:#7a7468;border-color:#7a746844">Waiting 5</span><span class="cs-pill" style="background:#c8502a18;color:#c8502a;border-color:#c8502a44">High 5</span></div>
+  <div class="cs-total" style="color:#2563eb">16</div>
+</div><div class="cs-row">
+  <div class="cs-name" style="color:#0891b2">AXA Nordic</div>
+  <div class="cs-pills"><span class="cs-pill" style="background:#c8502a18;color:#c8502a;border-color:#c8502a44">Overdue 7</span><span class="cs-pill" style="background:#c8502a18;color:#c8502a;border-color:#c8502a44">High 4</span></div>
+  <div class="cs-total" style="color:#0891b2">9</div>
+</div><div class="cs-row">
+  <div class="cs-name" style="color:#64748b">CBRE Internal</div>
+  <div class="cs-pills"><span class="cs-pill" style="background:#c8502a18;color:#c8502a;border-color:#c8502a44">Overdue 3</span><span class="cs-pill" style="background:#7a746818;color:#7a7468;border-color:#7a746844">Waiting 1</span><span class="cs-pill" style="background:#c8502a18;color:#c8502a;border-color:#c8502a44">High 1</span></div>
+  <div class="cs-total" style="color:#64748b">5</div>
+</div><div class="cs-row">
+  <div class="cs-name" style="color:#2563eb">AEWKYS</div>
+  <div class="cs-pills"><span class="cs-pill" style="background:#b08a2018;color:#b08a20;border-color:#b08a2044">Today 1</span></div>
+  <div class="cs-total" style="color:#2563eb">3</div>
+</div><div class="cs-row">
+  <div class="cs-name" style="color:#065f46">M&amp;G</div>
+  <div class="cs-pills"><span class="cs-pill" style="background:#c8502a18;color:#c8502a;border-color:#c8502a44">Overdue 1</span><span class="cs-pill" style="background:#7a746818;color:#7a7468;border-color:#7a746844">Waiting 1</span></div>
+  <div class="cs-total" style="color:#065f46">1</div>
+</div><div class="cs-row">
+  <div class="cs-name" style="color:#64748b">Vestas</div>
+  <div class="cs-pills"><span class="cs-pill" style="background:#c8502a18;color:#c8502a;border-color:#c8502a44">Overdue 1</span><span class="cs-pill" style="background:#7a746818;color:#7a7468;border-color:#7a746844">Waiting 1</span></div>
+  <div class="cs-total" style="color:#64748b">1</div>
+</div><div class="cs-row">
+  <div class="cs-name" style="color:#be185d">EQT</div>
+  <div class="cs-pills"><span class="cs-pill" style="background:#7a746818;color:#7a7468;border-color:#7a746844">Waiting 1</span></div>
+  <div class="cs-total" style="color:#be185d">1</div>
+</div><div class="cs-row">
+  <div class="cs-name" style="color:#64748b">SavillsIM</div>
+  <div class="cs-pills"></div>
+  <div class="cs-total" style="color:#64748b">1</div>
+</div><div class="cs-row">
+  <div class="cs-name" style="color:#16a34a">SSCP</div>
+  <div class="cs-pills"></div>
+  <div class="cs-total" style="color:#16a34a">1</div>
+</div><div class="cs-row">
+  <div class="cs-name" style="color:var(--muted)">No client</div>
+  <div class="cs-pills"><span class="cs-pill" style="background:#c8502a18;color:#c8502a;border-color:#c8502a44">Overdue 2</span></div>
+  <div class="cs-total" style="color:var(--muted)">5</div>
+</div>
+  </div>
+</div>
 <div class="cal-strip"><div class="cal-label">📅 Meetings</div><div class="cal-empty">No meetings scheduled today</div></div>
 <div class="ai-strip">
   <div class="ai-label">✦ AI<br>Briefing</div>
   <div class="ai-body"><div class="sum-head">MUST DO TODAY</div>
-<p>It's Saturday, so focus on the essentials you can clear before Monday. Approve the outstanding invoices as flagged, and respond to the two pending emails: the VKDK0001 funding request and the Kystvejen engineering costs query on pits and platform from AEW. If you have time, tackle the overdue Mads setup in Yardi PayScan for Sydmarken 5—this has been hanging since the 8th and blocks invoice workflow.</p>
+<p>Saturday gives you space to clear the AXA backlog before the week starts — draft the positioning note for Hamza on the Sophie/Joseph team setup and outline the PM/OPEX and AM-light expectations you need clarified, so you can send both Monday morning. The VKDK0001 funding request and K30 engineering costs email both need responses today. Invoice approvals as always.</p>
 <div class="sum-head">WATCH / CHASING</div>
-<p>The cluster of overdue AXA Nordic items needs Monday action: the Hamza meeting, the Sophie/Joseph team positioning, and the Emil conversation on Fabian's transition all slipped past Friday's deadline. Also chase Jean-Paul on the Sydmarken 2025 SC reconciliation sign-off—it's been waiting since late April and tenants are expecting final documents.</p>
+<p>The Sydmarken Mads/PayScan setup is now eight days overdue and blocks clean invoice processing — chase whoever owns the Yardi admin. Still waiting on Jean-Paul for the 2025 SC reconciliation sign-off and on Martin for the municipality response on building permits; both need a nudge Monday if silent. Emil hasn't come back on expediting the Fabian transition.</p>
 <div class="sum-head">THIS WEEK</div>
-<p>Sydmarken 5 dominates: prep the bi-weekly meeting materials, finalize the works memo with the project manager, and push Martin for the municipality's permit response. Get the additional works invoice ready for Ewa and add the CAPEX note to invoice 25-322. The Cushman outstanding document list and the FMD reconciliation lawyer letter numbers also need verification before the week closes.</p></div>
+<p>Sydmarken dominates: bi-weekly meeting prep, the additional works invoice for Ewa, the 3.5 works memo with the project manager, and verifying the 2024 FMD reconciliation lawyer letter numbers. Get the Cushman outstanding document list double-checked before the tenant budget pack follow-ups. Schedule the individual CSAT meetings for high-priority clients — that's now four days late.</p></div>
 </div>
 <div class="main">
   <section class="briefing-section"><div class="sec-head" style="color:#b08a20"><span>⚡ Today</span><span class="sec-count">3</span></div><div class="task-grid"><div class="task-card" data-page-id="3629c7fb-d95a-815a-b0ba-d0d09a96a303"><div class="card-header"><div class="card-title"><span class="dot high">●</span> Approve invoices</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3629c7fb-d95a-815a-b0ba-d0d09a96a303">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="Approve invoices" data-client="">+ My Day</button><a class="open-link" href="https://www.notion.so/Approve-invoices-3629c7fbd95a815ab0bad0d09a96a303" target="_blank">↗</a></div></div><div class="card-meta"><span class="wt-tag">💰 Finance / SC</span></div></div>
@@ -356,6 +420,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
 
   function escHtml(s) {
     return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function toggleCS() {
+    var body = document.getElementById('cs-body');
+    var btn  = document.getElementById('cs-btn');
+    var open = body.style.display === 'none';
+    body.style.display = open ? 'block' : 'none';
+    btn.querySelector('span').textContent = (open ? '▾ ' : '▸ ') + btn.querySelector('span').textContent.slice(2);
+    btn.querySelector('.cs-hint').textContent = open ? 'click to collapse' : 'click to expand';
   }
 
   function triggerRefresh() {
