@@ -16,6 +16,9 @@ import re
 import requests
 from datetime import date, datetime
 import anthropic
+from google.oauth2.credentials import Credentials
+from google.auth.transport.requests import Request
+from googleapiclient.discovery import build
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
 
@@ -25,6 +28,9 @@ NOTION_VERSION    = "2022-06-28"
 
 # Your Cloudflare Worker URL — fill in after deploying worker.js
 WORKER_URL = "https://notion-proxy.jgilbert82.workers.dev"
+
+# Google Calendar — work calendar (Outlook ICS imported to Google Calendar)
+WORK_CALENDAR_ID = "86iqekmmn19f3b7j1r9ihepkt9ethdtc@import.calendar.google.com"
 
 CLIENT_COLOURS = {
     "AEW":           "#2563eb",
@@ -57,6 +63,86 @@ def notion_headers():
         "Notion-Version": NOTION_VERSION,
     }
 
+
+
+# ── GOOGLE CALENDAR ───────────────────────────────────────────────────────────
+
+def fetch_calendar_events(today_str):
+    """Fetch today's events from the work calendar via Google Calendar API."""
+    import json
+    try:
+        creds_data = json.loads(os.environ["GOOGLE_CREDENTIALS_JSON"])
+        creds = Credentials(
+            token=creds_data["token"],
+            refresh_token=creds_data["refresh_token"],
+            token_uri="https://oauth2.googleapis.com/token",
+            client_id=creds_data["client_id"],
+            client_secret=creds_data["client_secret"],
+            scopes=["https://www.googleapis.com/auth/calendar.readonly"],
+        )
+        if creds.expired or not creds.valid:
+            creds.refresh(Request())
+
+        service = build("calendar", "v3", credentials=creds)
+
+        # Query today midnight → tonight midnight (Copenhagen = UTC+2 in summer)
+        time_min = today_str + "T00:00:00+02:00"
+        time_max = today_str + "T23:59:59+02:00"
+
+        result = service.events().list(
+            calendarId=WORK_CALENDAR_ID,
+            timeMin=time_min,
+            timeMax=time_max,
+            singleEvents=True,
+            orderBy="startTime",
+            maxResults=20,
+        ).execute()
+
+        events = []
+        for item in result.get("items", []):
+            start = item.get("start", {})
+            end   = item.get("end",   {})
+            # Skip all-day events (they have "date" not "dateTime")
+            if "dateTime" not in start:
+                continue
+            from datetime import datetime as dt
+            import re
+            def parse_time(s):
+                # Parse ISO datetime and return HH:MM in Copenhagen time
+                try:
+                    # Handle offset like +02:00
+                    d = dt.fromisoformat(s)
+                    return d.strftime("%H:%M")
+                except Exception:
+                    return s[:5]
+
+            summary  = item.get("summary", "Untitled")
+            location = item.get("location", "") or ""
+            start_t  = parse_time(start["dateTime"])
+            end_t    = parse_time(end["dateTime"])
+
+            # Skip declined events
+            attendees = item.get("attendees", [])
+            declined  = any(
+                a.get("self") and a.get("responseStatus") == "declined"
+                for a in attendees
+            )
+            if declined:
+                continue
+
+            events.append({
+                "summary":  summary,
+                "start":    start_t,
+                "end":      end_t,
+                "location": location[:60],
+            })
+
+        print(f"  Calendar: {len(events)} events today")
+        return events
+
+    except Exception as e:
+        print(f"  WARNING: Calendar fetch failed: {e}")
+        return []
 
 # ── CLIENT LOOKUP ─────────────────────────────────────────────────────────────
 
@@ -238,7 +324,7 @@ def bucket_tasks(tasks, today_str):
 
 # ── AI SUMMARY ────────────────────────────────────────────────────────────────
 
-def generate_summary(overdue, today, waiting, this_week, today_str):
+def generate_summary(overdue, today, waiting, this_week, today_str, calendar_events=None):
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
     today_date = date.today().strftime("%A %-d %B %Y")
 
@@ -260,6 +346,14 @@ def generate_summary(overdue, today, waiting, this_week, today_str):
     if this_week:
         sections.append(f"THIS WEEK ({len(this_week)}):\n{fmt(this_week, 8)}")
 
+    # Add calendar context
+    if calendar_events:
+        cal_lines = "\n".join(
+            f"  {e['start']}–{e['end']} {e['summary']}" + (f" @ {e['location']}" if e['location'] else "")
+            for e in calendar_events
+        )
+        sections.insert(0, f"TODAY'S MEETINGS:\n{cal_lines}")
+
     task_text = "\n\n".join(sections) or "No active tasks."
 
     msg = client.messages.create(
@@ -273,7 +367,7 @@ def generate_summary(overdue, today, waiting, this_week, today_str):
             f"MUST DO TODAY\n"
             f"WATCH / CHASING\n"
             f"THIS WEEK\n\n"
-            f"Be SPECIFIC — name the actual tasks and clients. 2-3 sentences per section. "
+            f"Be SPECIFIC — name the actual tasks and clients. Reference today's meetings where relevant. 2-3 sentences per section. "
             f"No bullets. Plain prose."
         ),
         messages=[{"role": "user", "content": task_text}],
@@ -402,11 +496,31 @@ def render_section(heading, icon, tasks, today_str, compact=False, colour="var(-
     )
 
 
+
+# ── CALENDAR RENDER ───────────────────────────────────────────────────────────
+
+def render_calendar_strip(events):
+    """Render today's meetings as a horizontal strip above the AI summary."""
+    if not events:
+        return '<div class="cal-strip"><div class="cal-label">📅 Meetings</div><div class="cal-empty">No meetings scheduled today</div></div>'
+
+    cards = ""
+    for e in events:
+        loc = f'<div class="cal-loc">📍 {esc(e["location"])}</div>' if e["location"] else ""
+        cards += f'''<div class="cal-event">
+  <div class="cal-time">{esc(e["start"])}–{esc(e["end"])}</div>
+  <div class="cal-title">{esc(e["summary"])}</div>
+  {loc}
+</div>'''
+
+    return f'<div class="cal-strip"><div class="cal-label">📅 Meetings</div><div class="cal-events">{cards}</div></div>'
+
 # ── HTML ──────────────────────────────────────────────────────────────────────
 
-def build_html(overdue, today, waiting, this_week, later, summary, today_str):
-    today_display  = datetime.strptime(today_str, "%Y-%m-%d").strftime("%A %-d %B %Y")
-    generated_time = datetime.utcnow().strftime("%H:%M UTC")
+def build_html(overdue, today, waiting, this_week, later, summary, today_str, calendar_events=None):
+    today_display   = datetime.strptime(today_str, "%Y-%m-%d").strftime("%A %-d %B %Y")
+    calendar_strip  = render_calendar_strip(calendar_events or [])
+    generated_time  = datetime.utcnow().strftime("%H:%M UTC")
     total          = len(overdue) + len(today) + len(waiting) + len(this_week) + len(later)
 
     return f"""<!DOCTYPE html>
@@ -473,6 +587,14 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
 .status-inprogress{{font-size:.54rem;letter-spacing:.5px;text-transform:uppercase;color:#0891b2;border:1px solid #0891b244;padding:2px 6px;background:#0891b209;}}
 .dot{{font-size:.55rem;margin-right:2px;line-height:1;flex-shrink:0;}}
 .dot.high{{color:var(--accent);}}.dot.low{{color:var(--border);}}
+.cal-strip{{background:#f0f4ff;border-bottom:2px solid var(--border);padding:14px 48px;display:flex;align-items:flex-start;gap:20px;}}
+.cal-label{{font-size:.55rem;letter-spacing:3px;text-transform:uppercase;color:#2563eb;font-weight:600;white-space:nowrap;padding-top:4px;flex-shrink:0;border-right:1px solid var(--border);padding-right:20px;}}
+.cal-events{{display:flex;gap:10px;flex-wrap:wrap;flex:1;}}
+.cal-event{{background:white;border:1px solid #dbeafe;border-left:3px solid #2563eb;padding:8px 12px;border-radius:2px;min-width:140px;}}
+.cal-time{{font-size:.62rem;letter-spacing:.5px;font-weight:600;color:#2563eb;margin-bottom:3px;}}
+.cal-title{{font-size:.78rem;font-weight:500;color:var(--ink);line-height:1.3;}}
+.cal-loc{{font-size:.62rem;color:var(--muted);margin-top:3px;}}
+.cal-empty{{font-size:.75rem;color:var(--muted);font-style:italic;padding-top:3px;}}
 .footer{{text-align:center;padding:20px;font-size:.62rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;border-top:1px solid var(--border);}}
 .card-actions{{display:flex;align-items:center;gap:6px;flex-shrink:0;}}
 .add-day-btn{{font-size:.54rem;letter-spacing:.8px;text-transform:uppercase;font-weight:600;
@@ -565,6 +687,7 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
   <div class="stat blue"><strong>{len(this_week)}</strong><span>This Week</span></div>
   <div class="stat"><strong>{total}</strong><span>Total Active</span></div>
 </div>
+{calendar_strip}
 <div class="ai-strip">
   <div class="ai-label">✦ AI<br>Briefing</div>
   <div class="ai-body">{format_summary_html(summary)}</div>
@@ -813,12 +936,15 @@ if __name__ == "__main__":
     print(f"  Today:{len(today)}  Overdue:{len(overdue)}  Waiting:{len(waiting)}  "
           f"This Week:{len(this_week)}  Later:{len(later)}")
 
+    print("\nFetching calendar events...")
+    calendar_events = fetch_calendar_events(today_str)
+
     print("\nGenerating AI summary...")
-    summary = generate_summary(overdue, today, waiting, this_week, today_str)
+    summary = generate_summary(overdue, today, waiting, this_week, today_str, calendar_events)
     print(f"  Done ({len(summary)} chars)")
 
     print("\nBuilding HTML...")
-    html = build_html(overdue, today, waiting, this_week, later, summary, today_str)
+    html = build_html(overdue, today, waiting, this_week, later, summary, today_str, calendar_events)
 
     with open("index.html", "w", encoding="utf-8") as f:
         f.write(html)
