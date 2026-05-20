@@ -110,8 +110,13 @@ def fetch_calendar_events(today_str):
             def parse_time(s):
                 # Parse ISO datetime and return HH:MM in Copenhagen time
                 try:
-                    # Handle offset like +02:00
+                    import re
                     d = dt.fromisoformat(s)
+                    # If datetime has timezone info, convert to Copenhagen (UTC+2 summer)
+                    if d.tzinfo is not None:
+                        from datetime import timezone, timedelta
+                        copenhagen = timezone(timedelta(hours=2))
+                        d = d.astimezone(copenhagen)
                     return d.strftime("%H:%M")
                 except Exception:
                     return s[:5]
