@@ -3,310 +3,344 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Daily Briefing · Wednesday 27 May 2026</title>
+<title>Daily Dashboard · Wednesday 27 May 2026</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
 <style>
-:root{--ink:#1a1a2e;--paper:#f5f0e8;--cream:#ede8dc;--accent:#c8502a;--gold:#b08a20;--muted:#7a7468;--border:#d4cfc5;--card:#faf7f2;}
+:root{
+  --ink:#1a1a2e;--paper:#f5f0e8;--cream:#ede8dc;
+  --accent:#c8502a;--gold:#b08a20;--muted:#7a7468;
+  --border:#d4cfc5;--card:#faf7f2;--blue:#2563eb;
+  --green:#16a34a;--sidebar:340px;
+}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);min-height:100vh;}
-.masthead{background:var(--ink);color:var(--paper);padding:24px 48px 20px;display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:12px;border-bottom:4px solid var(--accent);}
-.masthead h1{font-family:'Playfair Display',serif;font-size:2.4rem;letter-spacing:-0.5px;line-height:1;}
-.edition{font-size:.65rem;letter-spacing:3px;text-transform:uppercase;color:var(--accent);margin-top:6px;font-weight:500;}
+
+/* ── MASTHEAD ── */
+.masthead{background:var(--ink);color:var(--paper);padding:20px 40px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;border-bottom:4px solid var(--accent);}
+.mast-left h1{font-family:'Playfair Display',serif;font-size:2rem;letter-spacing:-0.5px;line-height:1;}
+.edition{font-size:.6rem;letter-spacing:3px;text-transform:uppercase;color:var(--accent);margin-top:5px;font-weight:500;}
 .mast-right{text-align:right;}
-.date-line{font-family:'Playfair Display',serif;font-size:1rem;opacity:.85;}
-.sub{font-size:.65rem;letter-spacing:2px;text-transform:uppercase;opacity:.4;margin-top:4px;}
-.gen-time{font-size:.58rem;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,.25);margin-top:3px;}
-.refresh-btn{font-size:.55rem;letter-spacing:1.5px;text-transform:uppercase;font-weight:600;
-  color:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.15);background:transparent;
-  padding:3px 10px;cursor:pointer;margin-top:6px;transition:all .2s;display:inline-block;}
-.refresh-btn:hover{color:var(--paper);border-color:rgba(255,255,255,.5);background:rgba(255,255,255,.08);}
-.refresh-btn.spinning{color:rgba(255,255,255,.25);border-color:rgba(255,255,255,.1);cursor:default;}
+.date-line{font-family:'Playfair Display',serif;font-size:.95rem;opacity:.85;}
+.sub{font-size:.62rem;letter-spacing:2px;text-transform:uppercase;opacity:.4;margin-top:3px;}
+.gen-time{font-size:.55rem;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,.2);margin-top:2px;}
+.refresh-btn{font-size:.55rem;letter-spacing:1.5px;text-transform:uppercase;font-weight:600;color:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.15);background:transparent;padding:3px 10px;cursor:pointer;margin-top:5px;transition:all .2s;display:inline-block;}
+.refresh-btn:hover{color:var(--paper);border-color:rgba(255,255,255,.5);}
+.refresh-btn.spinning{color:rgba(255,255,255,.2);border-color:rgba(255,255,255,.08);cursor:default;}
 .refresh-btn.done{color:#4ade80;border-color:#4ade8055;}
 .refresh-btn.error{color:#e07a5a;border-color:#e07a5a55;}
-.stats-bar{background:var(--ink);display:flex;padding:14px 48px;border-top:1px solid rgba(255,255,255,.08);flex-wrap:wrap;gap:28px;}
-.stat strong{font-family:'Playfair Display',serif;font-size:1.7rem;display:block;line-height:1;color:var(--paper);}
-.stat span{font-size:.58rem;letter-spacing:2.5px;text-transform:uppercase;color:rgba(255,255,255,.3);}
-.stat.red strong{color:#e07a5a;}.stat.gold strong{color:#d4aa50;}.stat.blue strong{color:#93c5fd;}
-.ai-strip{background:var(--cream);border-bottom:2px solid var(--border);padding:20px 48px;display:flex;gap:24px;align-items:flex-start;}
-.ai-label{font-size:.55rem;letter-spacing:3px;text-transform:uppercase;color:var(--gold);font-weight:600;white-space:nowrap;padding-top:2px;flex-shrink:0;line-height:1.6;border-right:1px solid var(--border);padding-right:20px;}
+
+/* ── STATS ── */
+.stats-bar{background:var(--ink);display:flex;padding:12px 40px;border-top:1px solid rgba(255,255,255,.08);flex-wrap:wrap;gap:24px;}
+.stat strong{font-family:'Playfair Display',serif;font-size:1.5rem;display:block;line-height:1;color:var(--paper);}
+.stat span{font-size:.55rem;letter-spacing:2.5px;text-transform:uppercase;color:rgba(255,255,255,.3);}
+.stat.red strong{color:#e07a5a;}.stat.gold strong{color:#d4aa50;}.stat.blue strong{color:#93c5fd;}.stat.green strong{color:#86efac;}
+
+/* ── CLIENT SUMMARY ── */
+.client-summary{background:var(--cream);border-bottom:1px solid var(--border);}
+.cs-toggle{width:100%;background:none;border:none;padding:9px 40px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-size:.58rem;letter-spacing:2.5px;text-transform:uppercase;font-weight:600;color:var(--ink);transition:background .15s;text-align:left;}
+.cs-toggle:hover{background:rgba(0,0,0,.03);}
+.cs-hint{font-size:.55rem;letter-spacing:1px;color:var(--muted);font-weight:400;text-transform:none;}
+.cs-body{padding:8px 40px 12px;}
+.cs-header{display:grid;grid-template-columns:160px 1fr 36px;font-size:.52rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);padding:4px 0;border-bottom:1px solid var(--border);margin-bottom:3px;}
+.cs-row{display:grid;grid-template-columns:160px 1fr 36px;align-items:center;padding:4px 0;border-bottom:1px solid rgba(0,0,0,.04);}
+.cs-row:last-child{border-bottom:none;}
+.cs-name{font-size:.7rem;font-weight:600;}
+.cs-pills{display:flex;gap:4px;flex-wrap:wrap;}
+.cs-pill{font-size:.5rem;letter-spacing:.8px;text-transform:uppercase;font-weight:600;padding:1px 5px;border:1px solid;border-radius:2px;}
+.cs-total{font-family:'Playfair Display',serif;font-size:.9rem;text-align:right;}
+
+/* ── AI STRIP ── */
+.ai-strip{background:var(--cream);border-bottom:2px solid var(--border);padding:16px 40px;display:flex;gap:20px;align-items:flex-start;}
+.ai-label{font-size:.52rem;letter-spacing:3px;text-transform:uppercase;color:var(--gold);font-weight:600;white-space:nowrap;padding-top:2px;flex-shrink:0;border-right:1px solid var(--border);padding-right:16px;line-height:1.6;}
 .ai-body{flex:1;}
-.sum-head{font-size:.6rem;letter-spacing:2.5px;text-transform:uppercase;color:var(--accent);font-weight:700;margin:10px 0 3px;}
+.sum-head{font-size:.58rem;letter-spacing:2.5px;text-transform:uppercase;color:var(--accent);font-weight:700;margin:9px 0 2px;}
 .sum-head:first-child{margin-top:0;}
-.ai-body p{font-size:.82rem;line-height:1.7;color:var(--ink);font-style:italic;margin-bottom:2px;}
-.main{padding:0 48px 60px;}
-.briefing-section{margin-top:32px;}
-.sec-head{font-size:.62rem;letter-spacing:3.5px;text-transform:uppercase;font-weight:700;border-bottom:2px solid var(--ink);padding-bottom:8px;margin-bottom:16px;display:flex;align-items:baseline;gap:8px;}
-.sec-count{font-family:'Playfair Display',serif;font-size:.8rem;color:var(--muted);letter-spacing:0;font-weight:400;margin-left:auto;}
-.task-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px;}
-.task-card{background:var(--card);border:1px solid var(--border);padding:14px 16px;border-radius:2px;transition:box-shadow .15s;}
-.task-card:hover{box-shadow:0 2px 12px rgba(0,0,0,.08);}
-.card-header{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:7px;}
-.card-title{font-size:.82rem;font-weight:500;line-height:1.45;color:var(--ink);flex:1;}
-.open-link{font-size:.8rem;color:var(--muted);text-decoration:none;opacity:.45;flex-shrink:0;transition:opacity .15s;padding:0 2px;}
-.open-link:hover{opacity:1;color:var(--ink);}
-.card-meta{display:flex;gap:5px;flex-wrap:wrap;align-items:center;}
-.task-ctx{font-size:.7rem;color:var(--muted);margin-top:7px;line-height:1.55;border-left:2px solid var(--border);padding-left:8px;}
-.task-ctx em{font-style:normal;font-weight:500;color:var(--ink);opacity:.7;}
+.ai-body p{font-size:.8rem;line-height:1.7;color:var(--ink);font-style:italic;margin-bottom:2px;}
+
+/* ── TWO-COLUMN LAYOUT ── */
+.dash-body{display:grid;grid-template-columns:1fr var(--sidebar);gap:0;min-height:calc(100vh - 200px);}
+.dash-main{padding:24px 32px 60px;border-right:1px solid var(--border);}
+.dash-sidebar{padding:20px 24px 60px;background:var(--cream);}
+
+/* ── WORK CALENDAR ── */
+.work-cal{margin-bottom:28px;}
+.work-cal-title{font-size:.58rem;letter-spacing:3px;text-transform:uppercase;font-weight:700;color:var(--accent);border-bottom:2px solid var(--ink);padding-bottom:6px;margin-bottom:12px;}
+.day-cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+.day-col{background:var(--card);border:1px solid var(--border);border-radius:2px;overflow:hidden;}
+.day-col-hdr{background:rgba(0,0,0,.04);padding:8px 12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:baseline;}
+.day-col-hdr.today-hdr{background:var(--ink);color:var(--paper);}
+.day-col-hdr strong{font-size:.72rem;letter-spacing:.5px;}
+.day-col-hdr span{font-size:.6rem;opacity:.6;}
+.cal-event{padding:8px 12px;border-bottom:1px solid var(--border);transition:opacity .2s;}
+.cal-event:last-child{border-bottom:none;}
+.cal-event.past{opacity:.4;}
+.ev-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;}
+.ev-time{font-size:.6rem;letter-spacing:.5px;font-weight:600;color:var(--blue);}
+.ev-title{font-size:.76rem;font-weight:500;color:var(--ink);line-height:1.35;}
+.ev-loc{font-size:.62rem;color:var(--muted);margin-top:2px;}
+.teams-link{font-size:.54rem;letter-spacing:.5px;text-transform:uppercase;font-weight:600;color:white;background:#5b5ea6;padding:2px 6px;text-decoration:none;border-radius:2px;white-space:nowrap;}
+.teams-link:hover{background:#4a4d8f;}
+.no-meetings{padding:12px;font-size:.72rem;color:var(--muted);font-style:italic;}
+
+/* ── TASKS ── */
+.dash-section{margin-bottom:24px;}
+.sec-head{font-size:.58rem;letter-spacing:3.5px;text-transform:uppercase;font-weight:700;border-bottom:2px solid var(--ink);padding-bottom:7px;margin-bottom:14px;display:flex;align-items:baseline;gap:8px;color:var(--sec-col,var(--accent));}
+.sec-count{font-family:'Playfair Display',serif;font-size:.75rem;color:var(--muted);letter-spacing:0;font-weight:400;margin-left:auto;}
+.task-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;}
+.task-card{background:var(--card);border:1px solid var(--border);padding:12px 14px;border-radius:2px;transition:box-shadow .15s;}
+.task-card:hover{box-shadow:0 2px 10px rgba(0,0,0,.07);}
+.card-header{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px;}
+.card-title{font-size:.8rem;font-weight:500;line-height:1.4;flex:1;}
+.card-actions{display:flex;align-items:center;gap:5px;flex-shrink:0;}
+.card-meta{display:flex;gap:4px;flex-wrap:wrap;align-items:center;}
+.task-ctx{font-size:.68rem;color:var(--muted);margin-top:6px;line-height:1.5;border-left:2px solid var(--border);padding-left:7px;}
 .task-list{display:flex;flex-direction:column;}
-.task-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);}
+.task-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);}
 .task-row:last-child{border-bottom:none;}
-.task-row-left{display:flex;align-items:baseline;gap:6px;flex:1;min-width:0;}
-.task-row-title{font-size:.8rem;font-weight:400;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.task-row-right{display:flex;align-items:center;gap:5px;flex-shrink:0;}
-.badge{font-size:.54rem;letter-spacing:1px;text-transform:uppercase;font-weight:600;padding:2px 6px;border:1px solid;display:inline-block;white-space:nowrap;}
+.task-row-left{display:flex;align-items:baseline;gap:5px;flex:1;min-width:0;}
+.task-row-title{font-size:.78rem;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.task-row-right{display:flex;align-items:center;gap:4px;flex-shrink:0;}
+.badge{font-size:.52rem;letter-spacing:1px;text-transform:uppercase;font-weight:600;padding:2px 5px;border:1px solid;display:inline-block;white-space:nowrap;}
 .badge.overdue{color:var(--accent);border-color:var(--accent);background:rgba(200,80,42,.07);}
 .badge.today{color:var(--gold);border-color:var(--gold);background:rgba(176,138,32,.09);}
 .badge.upcoming{color:var(--muted);border-color:var(--border);}
-.client-tag{font-size:.54rem;letter-spacing:.8px;text-transform:uppercase;font-weight:600;padding:2px 7px;border:1px solid;display:inline-block;border-radius:2px;white-space:nowrap;}
-.wt-tag{font-size:.58rem;color:var(--muted);padding:1px 5px;border:1px solid var(--border);background:rgba(0,0,0,.025);white-space:nowrap;}
-.status-inprogress{font-size:.54rem;letter-spacing:.5px;text-transform:uppercase;color:#0891b2;border:1px solid #0891b244;padding:2px 6px;background:#0891b209;}
-.dot{font-size:.55rem;margin-right:2px;line-height:1;flex-shrink:0;}
+.client-tag{font-size:.52rem;letter-spacing:.8px;text-transform:uppercase;font-weight:600;padding:2px 6px;border:1px solid;display:inline-block;border-radius:2px;white-space:nowrap;}
+.client-tag-sm{font-size:.5rem;letter-spacing:.8px;text-transform:uppercase;font-weight:600;padding:1px 5px;border:1px solid;display:inline-block;border-radius:2px;white-space:nowrap;}
+.wt-tag{font-size:.55rem;color:var(--muted);padding:1px 5px;border:1px solid var(--border);white-space:nowrap;}
+.dot{font-size:.52rem;margin-right:2px;flex-shrink:0;}
 .dot.high{color:var(--accent);}.dot.low{color:var(--border);}
-.client-summary{background:var(--cream);border-bottom:1px solid var(--border);}
-.cs-toggle{width:100%;background:none;border:none;padding:10px 48px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-size:.6rem;letter-spacing:2.5px;text-transform:uppercase;font-weight:600;color:var(--ink);transition:background .15s;text-align:left;}
-.cs-toggle:hover{background:rgba(0,0,0,.03);}
-.cs-hint{font-size:.55rem;letter-spacing:1px;color:var(--muted);font-weight:400;text-transform:none;}
-.cs-body{padding:0 48px 14px;}
-.cs-header{display:grid;grid-template-columns:160px 1fr 40px;font-size:.54rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);padding:6px 0;border-bottom:1px solid var(--border);margin-bottom:4px;}
-.cs-row{display:grid;grid-template-columns:160px 1fr 40px;align-items:center;padding:5px 0;border-bottom:1px solid rgba(0,0,0,.04);}
-.cs-row:last-child{border-bottom:none;}
-.cs-name{font-size:.72rem;font-weight:600;letter-spacing:.5px;}
-.cs-pills{display:flex;gap:5px;flex-wrap:wrap;}
-.cs-pill{font-size:.52rem;letter-spacing:.8px;text-transform:uppercase;font-weight:600;padding:2px 6px;border:1px solid;border-radius:2px;white-space:nowrap;}
-.cs-total{font-family:'Playfair Display',serif;font-size:1rem;text-align:right;font-weight:400;}
-.cal-strip{background:#f0f4ff;border-bottom:2px solid var(--border);padding:14px 48px;display:flex;align-items:flex-start;gap:20px;}
-.cal-label{font-size:.55rem;letter-spacing:3px;text-transform:uppercase;color:#2563eb;font-weight:600;white-space:nowrap;padding-top:4px;flex-shrink:0;border-right:1px solid var(--border);padding-right:20px;}
-.cal-events{display:flex;gap:10px;flex-wrap:wrap;flex:1;}
-.cal-event{background:white;border:1px solid #dbeafe;border-left:3px solid #2563eb;padding:8px 12px;border-radius:2px;min-width:140px;}
-.cal-time{font-size:.62rem;letter-spacing:.5px;font-weight:600;color:#2563eb;margin-bottom:3px;}
-.cal-title{font-size:.78rem;font-weight:500;color:var(--ink);line-height:1.3;}
-.cal-loc{font-size:.62rem;color:var(--muted);margin-top:3px;}
-.cal-empty{font-size:.75rem;color:var(--muted);font-style:italic;padding-top:3px;}
-.footer{text-align:center;padding:20px;font-size:.62rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;border-top:1px solid var(--border);}
-.card-actions{display:flex;align-items:center;gap:6px;flex-shrink:0;}
-.add-day-btn{font-size:.54rem;letter-spacing:.8px;text-transform:uppercase;font-weight:600;
-  color:var(--gold);border:1px solid var(--gold);background:rgba(176,138,32,.06);
-  padding:2px 7px;cursor:pointer;white-space:nowrap;transition:all .15s;}
-.add-day-btn:hover{background:var(--gold);color:var(--paper);}
+.open-link{font-size:.75rem;color:var(--muted);text-decoration:none;opacity:.4;transition:opacity .15s;}
+.open-link:hover{opacity:1;}
+.done-btn{font-size:.52rem;letter-spacing:.8px;text-transform:uppercase;font-weight:600;color:var(--green);border:1px solid var(--green);background:rgba(22,163,74,.06);padding:2px 6px;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.done-btn:hover{background:var(--green);color:white;}
+.done-btn.saving{color:var(--muted);border-color:var(--border);background:transparent;cursor:default;}
+.done-btn-sm{font-size:.62rem;font-weight:700;color:var(--green);border:1px solid var(--green);background:rgba(22,163,74,.06);padding:1px 5px;cursor:pointer;transition:all .15s;line-height:1.4;}
+.done-btn-sm:hover{background:var(--green);color:white;}
+.done-btn-sm.saving{color:var(--muted);border-color:var(--border);background:transparent;}
+.add-day-btn{font-size:.52rem;letter-spacing:.8px;text-transform:uppercase;font-weight:600;color:var(--gold);border:1px solid var(--gold);background:rgba(176,138,32,.06);padding:2px 6px;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.add-day-btn:hover{background:var(--gold);color:var(--ink);}
 .add-day-btn.added{color:var(--muted);border-color:var(--border);background:transparent;cursor:default;}
-.add-day-btn-sm{font-size:.65rem;font-weight:700;color:var(--gold);border:1px solid var(--gold);
-  background:rgba(176,138,32,.06);padding:1px 6px;cursor:pointer;transition:all .15s;line-height:1.4;}
-.add-day-btn-sm:hover{background:var(--gold);color:var(--paper);}
-.add-day-btn-sm.added{color:var(--border);border-color:var(--border);background:transparent;cursor:default;}
-.done-btn{font-size:.54rem;letter-spacing:.8px;text-transform:uppercase;font-weight:600;color:#16a34a;border:1px solid #16a34a;background:rgba(22,163,74,.06);padding:2px 7px;cursor:pointer;white-space:nowrap;transition:all .15s;}
-.done-btn:hover{background:#16a34a;color:var(--paper);}
-.done-btn.saving{color:var(--muted);border-color:var(--border);cursor:default;background:transparent;}
-.done-btn-sm{font-size:.65rem;font-weight:700;color:#16a34a;border:1px solid #16a34a;background:rgba(22,163,74,.06);padding:1px 6px;cursor:pointer;transition:all .15s;line-height:1.4;}
-.done-btn-sm:hover{background:#16a34a;color:var(--paper);}
-.done-btn-sm.saving{color:var(--muted);border-color:var(--border);background:transparent;cursor:default;}
+.add-day-btn-sm{font-size:.62rem;font-weight:700;color:var(--gold);border:1px solid var(--gold);background:rgba(176,138,32,.06);padding:1px 5px;cursor:pointer;transition:all .15s;line-height:1.4;}
+.add-day-btn-sm:hover{background:var(--gold);color:var(--ink);}
+.add-day-btn-sm.added{color:var(--muted);border-color:var(--border);background:transparent;}
 .task-card.done-fade,.task-row.done-fade{opacity:0;transform:translateY(-3px);transition:all .5s ease;pointer-events:none;}
 
+/* ── SIDEBAR: EMAIL TRIAGE ── */
+.sidebar-section{margin-bottom:24px;}
+.sidebar-title{font-size:.58rem;letter-spacing:3px;text-transform:uppercase;font-weight:700;border-bottom:2px solid var(--ink);padding-bottom:7px;margin-bottom:12px;display:flex;align-items:baseline;justify-content:space-between;}
+.sidebar-title .stcount{font-family:'Playfair Display',serif;font-size:.75rem;color:var(--muted);font-weight:400;}
+.email-group-label{font-size:.54rem;letter-spacing:1.5px;text-transform:uppercase;font-weight:600;color:var(--muted);padding:8px 0 4px;border-bottom:1px dashed var(--border);margin-bottom:6px;}
+.email-group-label:first-child{padding-top:0;}
+.email-row{padding:8px 0;border-bottom:1px solid var(--border);}
+.email-row:last-child{border-bottom:none;}
+.email-header{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-bottom:3px;}
+.email-sender{font-size:.68rem;font-weight:600;color:var(--ink);}
+.email-date{font-size:.58rem;color:var(--muted);margin-left:auto;}
+.new-dot{font-size:.5rem;letter-spacing:1px;text-transform:uppercase;font-weight:700;color:white;background:var(--accent);padding:1px 5px;border-radius:2px;}
+.email-subject{font-size:.72rem;font-weight:500;line-height:1.35;margin-bottom:3px;}
+.email-subject a{color:var(--ink);text-decoration:none;}
+.email-subject a:hover{color:var(--accent);}
+.email-preview{font-size:.65rem;color:var(--muted);line-height:1.45;}
+.no-emails{font-size:.72rem;color:var(--muted);font-style:italic;padding:8px 0;}
+
+/* ── SIDEBAR: FAMILY ── */
+.fam-row{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--border);}
+.fam-row:last-child{border-bottom:none;}
+.fam-date{font-size:.65rem;font-weight:600;color:var(--muted);white-space:nowrap;width:56px;flex-shrink:0;padding-top:2px;}
+.fam-events{display:flex;flex-direction:column;gap:4px;flex:1;}
+.fam-pill{font-size:.7rem;color:var(--ink);line-height:1.35;}
+.no-family{font-size:.72rem;color:var(--muted);font-style:italic;padding:8px 0;}
+
 /* ── MY DAY PANEL ── */
-#my-day-panel{
-  position:fixed;bottom:24px;right:24px;width:340px;
-  background:var(--ink);color:var(--paper);border-radius:4px;
-  box-shadow:0 8px 32px rgba(0,0,0,.35);z-index:1000;
-  transition:all .2s ease;font-family:'DM Sans',sans-serif;
-}
-#my-day-panel.collapsed{width:160px;}
-#my-day-header{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:12px 16px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.1);
-  user-select:none;
-}
-#my-day-title{font-size:.6rem;letter-spacing:2.5px;text-transform:uppercase;font-weight:600;color:var(--gold);}
-#my-day-count{font-family:'Playfair Display',serif;font-size:1rem;color:var(--paper);margin-left:8px;}
-#my-day-toggle{font-size:.7rem;color:rgba(255,255,255,.4);margin-left:auto;}
-#my-day-body{padding:12px 16px;display:block;}
+#my-day-panel{position:fixed;bottom:20px;right:20px;width:320px;background:var(--ink);color:var(--paper);border-radius:4px;box-shadow:0 8px 32px rgba(0,0,0,.35);z-index:1000;transition:all .2s ease;font-family:'DM Sans',sans-serif;}
+#my-day-panel.collapsed{width:150px;}
+#my-day-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.1);user-select:none;}
+#my-day-title{font-size:.58rem;letter-spacing:2.5px;text-transform:uppercase;font-weight:600;color:var(--gold);}
+#my-day-count{font-family:'Playfair Display',serif;font-size:.95rem;color:var(--paper);margin-left:8px;}
+#my-day-toggle{font-size:.68rem;color:rgba(255,255,255,.4);margin-left:auto;}
+#my-day-body{padding:10px 14px;display:block;}
 #my-day-panel.collapsed #my-day-body{display:none;}
-#my-day-list{list-style:none;margin-bottom:12px;min-height:32px;}
-#my-day-list li{
-  display:flex;align-items:flex-start;gap:8px;padding:7px 0;
-  border-bottom:1px solid rgba(255,255,255,.08);cursor:grab;
-  font-size:.75rem;line-height:1.4;
-}
+#my-day-list{list-style:none;margin-bottom:10px;min-height:28px;}
+#my-day-list li{display:flex;align-items:flex-start;gap:7px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.08);cursor:grab;font-size:.72rem;line-height:1.35;}
 #my-day-list li:last-child{border-bottom:none;}
 #my-day-list li.dragging{opacity:.4;}
 #my-day-list li.drag-over{border-top:2px solid var(--gold);}
-.day-num{font-family:'Playfair Display',serif;font-size:.8rem;color:var(--gold);
-  flex-shrink:0;width:16px;text-align:right;margin-top:1px;}
+.day-num{font-family:'Playfair Display',serif;font-size:.78rem;color:var(--gold);flex-shrink:0;width:14px;text-align:right;margin-top:1px;}
 .day-text{flex:1;}
-.day-client{font-size:.6rem;letter-spacing:.5px;color:rgba(255,255,255,.35);display:block;margin-top:1px;}
-.day-remove{font-size:.7rem;color:rgba(255,255,255,.25);cursor:pointer;flex-shrink:0;
-  padding:0 2px;line-height:1;transition:color .15s;margin-top:1px;}
+.day-client{font-size:.58rem;color:rgba(255,255,255,.35);display:block;margin-top:1px;}
+.day-remove{font-size:.68rem;color:rgba(255,255,255,.25);cursor:pointer;flex-shrink:0;padding:0 2px;transition:color .15s;}
 .day-remove:hover{color:#e07a5a;}
-#my-day-empty{font-size:.72rem;color:rgba(255,255,255,.3);font-style:italic;padding:4px 0 8px;}
-.day-actions{display:flex;gap:8px;}
-.day-btn{flex:1;font-size:.58rem;letter-spacing:1px;text-transform:uppercase;font-weight:600;
-  padding:6px 10px;cursor:pointer;border:none;transition:all .15s;}
+#my-day-empty{font-size:.7rem;color:rgba(255,255,255,.3);font-style:italic;padding:4px 0 8px;}
+.day-actions{display:flex;gap:6px;}
+.day-btn{flex:1;font-size:.56rem;letter-spacing:1px;text-transform:uppercase;font-weight:600;padding:5px 8px;cursor:pointer;border:none;transition:all .15s;}
 #btn-copy{background:var(--gold);color:var(--ink);}
 #btn-copy:hover{background:#c8a020;}
 #btn-clear{background:rgba(255,255,255,.08);color:rgba(255,255,255,.5);}
 #btn-clear:hover{background:rgba(255,255,255,.15);color:var(--paper);}
-#copy-confirm{font-size:.6rem;color:var(--gold);text-align:center;margin-top:8px;
-  height:14px;opacity:0;transition:opacity .3s;}
+#copy-confirm{font-size:.58rem;color:var(--gold);text-align:center;margin-top:6px;height:14px;opacity:0;transition:opacity .3s;}
 #copy-confirm.show{opacity:1;}
 
-@media(max-width:860px){
-  .masthead,.stats-bar,.ai-strip,.main{padding-left:20px;padding-right:20px;}
+/* ── FOOTER ── */
+.footer{text-align:center;padding:16px;font-size:.6rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;border-top:1px solid var(--border);}
+
+/* ── RESPONSIVE ── */
+@media(max-width:1024px){
+  .dash-body{grid-template-columns:1fr;}
+  .dash-sidebar{border-top:1px solid var(--border);background:var(--paper);}
+  .day-cols{grid-template-columns:1fr;}
   .task-grid{grid-template-columns:1fr;}
-  .ai-strip{flex-direction:column;gap:10px;}
-  .ai-label{border-right:none;padding-right:0;border-bottom:1px solid var(--border);padding-bottom:10px;}
+  .masthead,.stats-bar,.ai-strip,.dash-main,.dash-sidebar,.cs-toggle,.cs-body{padding-left:20px;padding-right:20px;}
   #my-day-panel{width:calc(100vw - 32px);right:16px;bottom:16px;}
   #my-day-panel.collapsed{width:140px;}
 }
 </style>
 </head>
 <body>
+
 <div class="masthead">
-  <div><h1>Daily Briefing</h1><div class="edition">Personal Edition · CBRE Copenhagen</div></div>
+  <div class="mast-left">
+    <h1>Daily Dashboard</h1>
+    <div class="edition">CBRE Copenhagen · Joseph Gilbert</div>
+  </div>
   <div class="mast-right">
     <div class="date-line">Wednesday 27 May 2026</div>
     <div class="sub">Good morning, Joseph</div>
-    <div class="gen-time">Generated 08:06 UTC · Notion</div>
+    <div class="gen-time">Generated 12:05 UTC</div>
     <button class="refresh-btn" id="refresh-btn" onclick="triggerRefresh()">↻ Refresh</button>
   </div>
 </div>
+
 <div class="stats-bar">
-  <div class="stat red"><strong>34</strong><span>Overdue</span></div>
+  <div class="stat red"><strong>31</strong><span>Overdue</span></div>
   <div class="stat gold"><strong>1</strong><span>Today</span></div>
-  <div class="stat"><strong>9</strong><span>Waiting On</span></div>
-  <div class="stat blue"><strong>3</strong><span>This Week</span></div>
-  <div class="stat"><strong>66</strong><span>Total Active</span></div>
+  <div class="stat"><strong>15</strong><span>Waiting</span></div>
+  <div class="stat blue"><strong>2</strong><span>This Week</span></div>
+  <div class="stat green"><strong>0</strong><span>New Emails</span></div>
+  <div class="stat"><strong>62</strong><span>Total Open</span></div>
 </div>
-<div class="client-summary" id="cs-wrapper">
+
+<div class="client-summary">
   <button class="cs-toggle" onclick="toggleCS()" id="cs-btn">
-    <span>▸ Clients (8)</span>
-    <span class="cs-hint">click to expand</span>
+    <span>▸ Clients (8)</span><span class="cs-hint">click to expand</span>
   </button>
   <div class="cs-body" id="cs-body" style="display:none">
-    <div class="cs-header">
-      <span>Client</span><span></span><span style="text-align:right">Open</span>
-    </div>
-    <div class="cs-row">
-  <div class="cs-name" style="color:#2563eb">AEWSYD</div>
-  <div class="cs-pills"><span class="cs-pill" style="background:#c8502a18;color:#c8502a;border-color:#c8502a44">Overdue 12</span><span class="cs-pill" style="background:#7a746818;color:#7a7468;border-color:#7a746844">Waiting 4</span><span class="cs-pill" style="background:#c8502a18;color:#c8502a;border-color:#c8502a44">High 6</span></div>
-  <div class="cs-total" style="color:#2563eb">22</div>
-</div><div class="cs-row">
-  <div class="cs-name" style="color:#2563eb">AEWKYS</div>
-  <div class="cs-pills"><span class="cs-pill" style="background:#c8502a18;color:#c8502a;border-color:#c8502a44">Overdue 6</span><span class="cs-pill" style="background:#7a746818;color:#7a7468;border-color:#7a746844">Waiting 1</span></div>
-  <div class="cs-total" style="color:#2563eb">8</div>
-</div><div class="cs-row">
-  <div class="cs-name" style="color:#0891b2">AXA Nordic</div>
-  <div class="cs-pills"><span class="cs-pill" style="background:#c8502a18;color:#c8502a;border-color:#c8502a44">Overdue 3</span><span class="cs-pill" style="background:#7a746818;color:#7a7468;border-color:#7a746844">Waiting 1</span><span class="cs-pill" style="background:#c8502a18;color:#c8502a;border-color:#c8502a44">High 3</span></div>
-  <div class="cs-total" style="color:#0891b2">7</div>
-</div><div class="cs-row">
-  <div class="cs-name" style="color:#64748b">CBRE Internal</div>
-  <div class="cs-pills"><span class="cs-pill" style="background:#c8502a18;color:#c8502a;border-color:#c8502a44">Overdue 2</span><span class="cs-pill" style="background:#7a746818;color:#7a7468;border-color:#7a746844">Waiting 1</span><span class="cs-pill" style="background:#c8502a18;color:#c8502a;border-color:#c8502a44">High 1</span></div>
-  <div class="cs-total" style="color:#64748b">5</div>
-</div><div class="cs-row">
-  <div class="cs-name" style="color:#065f46">M&amp;G</div>
-  <div class="cs-pills"><span class="cs-pill" style="background:#c8502a18;color:#c8502a;border-color:#c8502a44">Overdue 1</span><span class="cs-pill" style="background:#7a746818;color:#7a7468;border-color:#7a746844">Waiting 1</span></div>
-  <div class="cs-total" style="color:#065f46">1</div>
-</div><div class="cs-row">
-  <div class="cs-name" style="color:#64748b">Vestas</div>
-  <div class="cs-pills"><span class="cs-pill" style="background:#7a746818;color:#7a7468;border-color:#7a746844">Waiting 1</span></div>
-  <div class="cs-total" style="color:#64748b">1</div>
-</div><div class="cs-row">
-  <div class="cs-name" style="color:#64748b">SavillsIM</div>
-  <div class="cs-pills"></div>
-  <div class="cs-total" style="color:#64748b">1</div>
-</div><div class="cs-row">
-  <div class="cs-name" style="color:#64748b">Personal</div>
-  <div class="cs-pills"></div>
-  <div class="cs-total" style="color:#64748b">1</div>
-</div><div class="cs-row">
-  <div class="cs-name" style="color:var(--muted)">No client</div>
-  <div class="cs-pills"><span class="cs-pill" style="background:#c8502a18;color:#c8502a;border-color:#c8502a44">Overdue 13</span></div>
-  <div class="cs-total" style="color:var(--muted)">20</div>
-</div>
+    <div class="cs-header"><span>Client</span><span></span><span>Open</span></div>
+    <div class="cs-row"><div class="cs-name" style="color:#2563eb">AEWSYD</div><div class="cs-pills"><span class="cs-pill" style="background:#c8502a18;color:#c8502a;border-color:#c8502a44">Overdue 12</span><span class="cs-pill" style="background:#7a746818;color:#7a7468;border-color:#7a746844">Waiting 8</span></div><div class="cs-total" style="color:#2563eb">21</div></div><div class="cs-row"><div class="cs-name" style="color:#64748b">No client</div><div class="cs-pills"><span class="cs-pill" style="background:#c8502a18;color:#c8502a;border-color:#c8502a44">Overdue 13</span></div><div class="cs-total" style="color:#64748b">20</div></div><div class="cs-row"><div class="cs-name" style="color:#2563eb">AEWKYS</div><div class="cs-pills"><span class="cs-pill" style="background:#c8502a18;color:#c8502a;border-color:#c8502a44">Overdue 6</span><span class="cs-pill" style="background:#7a746818;color:#7a7468;border-color:#7a746844">Waiting 1</span></div><div class="cs-total" style="color:#2563eb">8</div></div><div class="cs-row"><div class="cs-name" style="color:#64748b">CBRE Internal</div><div class="cs-pills"><span class="cs-pill" style="background:#c8502a18;color:#c8502a;border-color:#c8502a44">Overdue 2</span><span class="cs-pill" style="background:#7a746818;color:#7a7468;border-color:#7a746844">Waiting 2</span></div><div class="cs-total" style="color:#64748b">5</div></div><div class="cs-row"><div class="cs-name" style="color:#0891b2">AXA Nordic</div><div class="cs-pills"><span class="cs-pill" style="background:#c8502a18;color:#c8502a;border-color:#c8502a44">Overdue 2</span><span class="cs-pill" style="background:#7a746818;color:#7a7468;border-color:#7a746844">Waiting 2</span></div><div class="cs-total" style="color:#0891b2">4</div></div><div class="cs-row"><div class="cs-name" style="color:#065f46">M&amp;G</div><div class="cs-pills"><span class="cs-pill" style="background:#c8502a18;color:#c8502a;border-color:#c8502a44">Overdue 1</span><span class="cs-pill" style="background:#7a746818;color:#7a7468;border-color:#7a746844">Waiting 1</span></div><div class="cs-total" style="color:#065f46">1</div></div><div class="cs-row"><div class="cs-name" style="color:#64748b">Vestas</div><div class="cs-pills"><span class="cs-pill" style="background:#7a746818;color:#7a7468;border-color:#7a746844">Waiting 1</span></div><div class="cs-total" style="color:#64748b">1</div></div><div class="cs-row"><div class="cs-name" style="color:#64748b">SavillsIM</div><div class="cs-pills"></div><div class="cs-total" style="color:#64748b">1</div></div><div class="cs-row"><div class="cs-name" style="color:#64748b">Personal</div><div class="cs-pills"></div><div class="cs-total" style="color:#64748b">1</div></div>
   </div>
 </div>
-<div class="cal-strip"><div class="cal-label">📅 Meetings</div><div class="cal-events"><div class="cal-event">
-  <div class="cal-time">09:00–10:00</div>
-  <div class="cal-title">AEW/CBRE - Sydmarken 5 - Bi-Weekly Watchlist Meeting</div>
-  <div class="cal-loc">📍 Microsoft Teams Meeting; $DK-Copenhagen-Mikado House-5-Magma</div>
-</div></div></div>
+
 <div class="ai-strip">
   <div class="ai-label">✦ AI<br>Briefing</div>
   <div class="ai-body"><div class="sum-head">MUST DO TODAY</div>
-<p>Your 09:00 AEW Sydmarken watchlist call is the priority—use it to confirm the Mads PayScan approver setup (overdue yesterday) and resolve the YunExpress underpayment invoice and roof rent Yardi correction, both a week overdue. Block time after the call to approve invoices flagged for today.</p>
+<p>The 09:00 AEW Sydmarken watchlist meeting is your chance to clear several overdue items in one go—raise the YunExpress underpayment invoice (DKK 1,268.75), the roof rent correction in Yardi (DKK 34,877.09 net), and get confirmation on invoice 202600000070 payment status. Before the call, complete Mads's setup as first approver in Yardi PayScan since that was due yesterday. Block 30 minutes after the meeting to process your daily invoice approvals.</p>
 <div class="sum-head">WATCH / CHASING</div>
-<p>Chase PostNord on termination dates for Kystvejen and flag their contractor complaints formally to KHR—both now five days overdue. Verify the HiServ move-in date in Yardi while you're in the AEW systems, and confirm payment status on invoice 202600000070.</p>
+<p>Chase KHR today on the PostNord contractor complaints for Kystvejen—this was due to be flagged formally last Thursday and AEW will expect an update. Follow up with the Yardi team or leasing on the HiServ move-in date verification, also overdue since Friday. If you haven't heard back on invoice 202600000070, escalate to accounts payable directly.</p>
 <div class="sum-head">THIS WEEK</div>
-<p>Lock in the AXA follow-up meeting with Hamza before Friday and confirm with Lukas whether Savills will absorb the NOI dashboard extra cost. The Sydmarken budget pack and disposal cost invoice to Luxembourg are both due by the 29th—start drafting now to stay ahead.</p></div>
+<p>By Friday, send Hamza the positioning note on Sophie/Joseph team setup for AXA and schedule those individual CSAT meetings for high-priority clients. The Sydmarken disposal cost invoice to Luxembourg and the tenant budget pack are both due 29 May—confirm with Mads whether the Cushman outstanding document list (overdue since 15 May) blocks either of those deliverables.</p></div>
 </div>
-<div class="main">
-  <section class="briefing-section"><div class="sec-head" style="color:#b08a20"><span>⚡ Today</span><span class="sec-count">1</span></div><div class="task-grid"><div class="task-card" data-page-id="36d9c7fb-d95a-81ff-a5d5-ee1ae262397c"><div class="card-header"><div class="card-title"><span class="dot high">●</span> Approve invoices</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="36d9c7fb-d95a-81ff-a5d5-ee1ae262397c">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="Approve invoices" data-client="">+ My Day</button><a class="open-link" href="https://www.notion.so/Approve-invoices-36d9c7fbd95a81ffa5d5ee1ae262397c" target="_blank">↗</a></div></div><div class="card-meta"><span class="wt-tag">💰 Finance / SC</span></div></div></div></section>
-  <section class="briefing-section"><div class="sec-head" style="color:#c8502a"><span>🔴 Overdue</span><span class="sec-count">34</span></div><div class="task-grid"><div class="task-card" data-page-id="3649c7fb-d95a-8105-a766-dbfab4bd8005"><div class="card-header"><div class="card-title"><span class="dot high">●</span> [K30/AEW] Issue underpayment invoice to YunExpress — DKK 1,268.75 incl. VAT</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3649c7fb-d95a-8105-a766-dbfab4bd8005">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="[K30/AEW] Issue underpayment invoice to YunExpress — DKK 1,268.75 incl. VAT" data-client="AEWSYD">+ My Day</button><a class="open-link" href="https://www.notion.so/K30-AEW-Issue-underpayment-invoice-to-YunExpress-DKK-1-268-75-incl-VAT-3649c7fbd95a8105a766dbfab4bd8005" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">19 May</span><span class="status-inprogress">In Progress</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWSYD</span><span class="wt-tag">💰 Finance / SC</span></div><div class="task-ctx">Invoice YunExpress for the roof rent underpayment arising from the lease calculation error (DKK 500 net for 30.04.2024–29.04.2025 + DKK 515 net for 30.04.2025–29.04.2026 = DKK 1,01…</div></div>
-<div class="task-card" data-page-id="3649c7fb-d95a-818c-93b7-e5a16fe71d1c"><div class="card-header"><div class="card-title"><span class="dot high">●</span> [K30/AEW] Correct monthly roof rent in Yardi — DKK 34,877.09 net from 30 Apr 2026</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3649c7fb-d95a-818c-93b7-e5a16fe71d1c">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="[K30/AEW] Correct monthly roof rent in Yardi — DKK 34,877.09 net from 30 Apr 2026" data-client="AEWSYD">+ My Day</button><a class="open-link" href="https://www.notion.so/K30-AEW-Correct-monthly-roof-rent-in-Yardi-DKK-34-877-09-net-from-30-Apr-2026-3649c7fbd95a818c93b7e5a16fe71d1c" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">19 May</span><span class="status-inprogress">In Progress</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWSYD</span><span class="wt-tag">💰 Finance / SC</span></div><div class="task-ctx">Update Yardi billing for YunExpress roof rent to DKK 34,877.09 net/month (was incorrectly billed at DKK 32,875/month base, and DKK 33,861.25 after last indexation). New figure refl…</div></div>
-<div class="task-card" data-page-id="34c9c7fb-d95a-81d1-a6a7-c179a7287dea"><div class="card-header"><div class="card-title"><span class="dot high">●</span> Sydmarken 5 — Complete Mads setup as first approver in Yardi PayScan</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="34c9c7fb-d95a-81d1-a6a7-c179a7287dea">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="Sydmarken 5 — Complete Mads setup as first approver in Yardi PayScan" data-client="AEWSYD">+ My Day</button><a class="open-link" href="https://www.notion.so/Sydmarken-5-Complete-Mads-setup-as-first-approver-in-Yardi-PayScan-34c9c7fbd95a81d1a6a7c179a7287dea" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">26 May</span><span class="status-inprogress">In Progress</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWSYD</span><span class="wt-tag">🏢 Internal</span></div><div class="task-ctx">Direct response to Jeppe's complaint about thin invoice descriptions. Mads to be added to Yardi as first approver — every new invoice validated at source for description quality, p…</div></div>
-<div class="task-card" data-page-id="921b843b-6cc7-44af-9bea-08334801e757"><div class="card-header"><div class="card-title"> Sydmarken 5 — Double-check Cushman outstanding document list</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="921b843b-6cc7-44af-9bea-08334801e757">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="Sydmarken 5 — Double-check Cushman outstanding document list" data-client="AEWSYD">+ My Day</button><a class="open-link" href="https://www.notion.so/Sydmarken-5-Double-check-Cushman-outstanding-document-list-921b843b6cc744af9bea08334801e757" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">15 May</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWSYD</span><span class="wt-tag">📊 Reporting</span></div><div class="task-ctx">Current items noted: service charge reconciliation, property tax material, municipality confirmation and lease agreement status. Confirm whether anything else is outstanding.</div></div>
-<div class="task-card" data-page-id="3649c7fb-d95a-81b0-9124-c7b6dfd63670"><div class="card-header"><div class="card-title"> [K30/AEW] Confirm payment status of invoice 202600000070 (DKK 782.74 incl. VAT)</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3649c7fb-d95a-81b0-9124-c7b6dfd63670">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="[K30/AEW] Confirm payment status of invoice 202600000070 (DKK 782.74 incl. VAT)" data-client="AEWSYD">+ My Day</button><a class="open-link" href="https://www.notion.so/K30-AEW-Confirm-payment-status-of-invoice-202600000070-DKK-782-74-incl-VAT-3649c7fbd95a81b09124c7b6dfd63670" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">21 May</span><span class="status-inprogress">In Progress</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWSYD</span><span class="wt-tag">💰 Finance / SC</span></div><div class="task-ctx">Invoice 202600000070 (DKK 782.74 incl. VAT) is the one-day indexation catch-up for 30 April 2026 — separate from the Addendum 3 underpayment. YunExpress queried it on 28–29 April 2…</div></div>
-<div class="task-card" data-page-id="3649c7fb-d95a-8157-9cd6-e5452013bd5d"><div class="card-header"><div class="card-title"> [AEW-KYS] Verify and update HiServ move-in date in Yardi</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3649c7fb-d95a-8157-9cd6-e5452013bd5d">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="[AEW-KYS] Verify and update HiServ move-in date in Yardi" data-client="AEWKYS">+ My Day</button><a class="open-link" href="https://www.notion.so/AEW-KYS-Verify-and-update-HiServ-move-in-date-in-Yardi-3649c7fbd95a81579cd6e5452013bd5d" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">22 May</span><span class="status-inprogress">In Progress</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWKYS</span><span class="wt-tag">🏢 Internal</span></div><div class="task-ctx">HiServ move-in date shows 15 July in Yardi but may not be accurate given KHR delivery delays. Confirm actual delivery date with KHR and update Yardi via Olga. 4 vacant units remain…</div></div>
-<div class="task-card" data-page-id="3649c7fb-d95a-8158-873d-e7fe131d1562"><div class="card-header"><div class="card-title"> [AEW-KYS] Flag PostNord contractor complaints formally to KHR</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3649c7fb-d95a-8158-873d-e7fe131d1562">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="[AEW-KYS] Flag PostNord contractor complaints formally to KHR" data-client="AEWKYS">+ My Day</button><a class="open-link" href="https://www.notion.so/AEW-KYS-Flag-PostNord-contractor-complaints-formally-to-KHR-3649c7fbd95a8158873de7fe131d1562" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">22 May</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWKYS</span><span class="wt-tag">🤝 Client Relations</span></div><div class="task-ctx">Formally notify KHR of PostNord's complaints from the monthly meeting (18 May): (1) water cut-offs without 3-5 day notice; (2) ABA fire alarm covers on emergency exits still not fi…</div></div>
-<div class="task-card" data-page-id="3649c7fb-d95a-81f7-b8e8-dba99bb7e441"><div class="card-header"><div class="card-title"> [AEW-KYS] Chase PostNord termination dates and initiate reinstatement planning</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3649c7fb-d95a-81f7-b8e8-dba99bb7e441">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="[AEW-KYS] Chase PostNord termination dates and initiate reinstatement planning" data-client="AEWKYS">+ My Day</button><a class="open-link" href="https://www.notion.so/AEW-KYS-Chase-PostNord-termination-dates-and-initiate-reinstatement-planning-3649c7fbd95a81f7b8e8dba99bb7e441" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">22 May</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWKYS</span><span class="wt-tag">📧 Chasing</span></div><div class="task-ctx">Termination dates still not confirmed with PostNord. Chase and confirm. Also initiate planning for reinstatement cost assessment — likely KHR to lead but needs scoping. Relevant to…</div></div>
-<div class="task-card" data-page-id="9e47e4d2-cd20-4444-a73a-8669300143cf"><div class="card-header"><div class="card-title"> AXA — Help plan possible Stockholm client meetings</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="9e47e4d2-cd20-4444-a73a-8669300143cf">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="AXA — Help plan possible Stockholm client meetings" data-client="AXA Nordic">+ My Day</button><a class="open-link" href="https://www.notion.so/AXA-Help-plan-possible-Stockholm-client-meetings-9e47e4d2cd204444a73a8669300143cf" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">22 May</span><span class="client-tag" style="background:#0891b218;color:#0891b2;border-color:#0891b244">AXA Nordic</span><span class="wt-tag">🤝 Client Relations</span></div><div class="task-ctx">Help plan a possible Stockholm trip, potentially combining AXA/BNP with Hamza, M&amp;G/Daniel, and Savills dashboard discussions.</div></div>
-<div class="task-card" data-page-id="b4fc64a8-70cc-4dfd-84de-c455fc99b376"><div class="card-header"><div class="card-title"> Sydmarken 5 — Provide Cushman with 2025 reconciliation details</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="b4fc64a8-70cc-4dfd-84de-c455fc99b376">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="Sydmarken 5 — Provide Cushman with 2025 reconciliation details" data-client="AEWSYD">+ My Day</button><a class="open-link" href="https://www.notion.so/Sydmarken-5-Provide-Cushman-with-2025-reconciliation-details-b4fc64a870cc4dfd84dec455fc99b376" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">22 May</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWSYD</span><span class="wt-tag">📊 Reporting</span></div><div class="task-ctx">Provide 2025 service charge reconciliation details to Cushman as the reconciliation progresses.</div></div>
-<div class="task-card" data-page-id="3649c7fb-d95a-81e1-b070-da089a7e1d19"><div class="card-header"><div class="card-title"> [AEW-KYS] Send post-meeting watchlist update to Johannes</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3649c7fb-d95a-81e1-b070-da089a7e1d19">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="[AEW-KYS] Send post-meeting watchlist update to Johannes" data-client="AEWKYS">+ My Day</button><a class="open-link" href="https://www.notion.so/AEW-KYS-Send-post-meeting-watchlist-update-to-Johannes-3649c7fbd95a81e1b070da089a7e1d19" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">23 May</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWKYS</span><span class="wt-tag">📊 Reporting</span></div><div class="task-ctx">Send updated watchlist to Johannes (AEW) following Thursday 21 May site visit. Include: ASR move-in outcome, gate decision, Wallenborn parking resolution, PostNord contractor compl…</div></div>
-<div class="task-card" data-page-id="3649c7fb-d95a-81a1-9ea4-c71ae9251ff2"><div class="card-header"><div class="card-title"> [AEW-KYS] Attend Techem on-site meeting — sub-meter mapping</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3649c7fb-d95a-81a1-9ea4-c71ae9251ff2">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="[AEW-KYS] Attend Techem on-site meeting — sub-meter mapping" data-client="AEWKYS">+ My Day</button><a class="open-link" href="https://www.notion.so/AEW-KYS-Attend-Techem-on-site-meeting-sub-meter-mapping-3649c7fbd95a81a19ea4c71ae9251ff2" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">26 May</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWKYS</span><span class="wt-tag">🏢 Internal</span></div><div class="task-ctx">On-site meeting with Techem confirmed 26 May. Bring electrician and plumber. Agenda: meter mapping across site, check meter installation following unit setup changes, and assess sm…</div></div>
-<div class="task-card" data-page-id="35e9c7fb-d95a-81a0-89b0-fdf47f62357b"><div class="card-header"><div class="card-title"> Re: Property valuations follow-up email</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="35e9c7fb-d95a-81a0-89b0-fdf47f62357b">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="Re: Property valuations follow-up email" data-client="CBRE Internal">+ My Day</button><a class="open-link" href="https://www.notion.so/Re-Property-valuations-follow-up-email-35e9c7fbd95a81a089b0fdf47f62357b" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">15 May</span><span class="client-tag" style="background:#64748b18;color:#64748b;border-color:#64748b44">CBRE Internal</span></div><div class="task-ctx">Johanne Kirkerud from CBRE A/S is following up on previous communications regarding new Danish property valuations and the upcoming valuation process, emphasizing the importance of…</div></div>
-<div class="task-card" data-page-id="35e9c7fb-d95a-81cf-81e0-c6e83b6ddc58"><div class="card-header"><div class="card-title"> Re: Csat emails thanking clients</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="35e9c7fb-d95a-81cf-81e0-c6e83b6ddc58">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="Re: Csat emails thanking clients" data-client="">+ My Day</button><a class="open-link" href="https://www.notion.so/Re-Csat-emails-thanking-clients-35e9c7fbd95a81cf81e0c6e83b6ddc58" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">17 May</span></div><div class="task-ctx">Johanne has adjusted the wording of the client emails regarding the CSAT survey follow-ups based on feedback from Lars. Lars suggested a modification to the timeline mentioned in t…</div></div>
-<div class="task-card" data-page-id="3619c7fb-d95a-81c3-84cc-f67b41215c7d"><div class="card-header"><div class="card-title"> RE: Sharefile Kastrup</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3619c7fb-d95a-81c3-84cc-f67b41215c7d">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="RE: Sharefile Kastrup" data-client="AEWKYS">+ My Day</button><a class="open-link" href="https://www.notion.so/RE-Sharefile-Kastrup-3619c7fbd95a81c384ccf67b41215c7d" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">18 May</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWKYS</span></div><div class="task-ctx">Joseph Gilbert from CBRE A/S discussed the limitations of uploading files to Sharefile due to restrictions on their laptops, stating that they can only upload to OneDrive and their…</div></div>
-<div class="task-card" data-page-id="3649c7fb-d95a-81d4-b470-e957f3467428"><div class="card-header"><div class="card-title"> RE: CBREIM Dashboard Example for Pitching Purposes</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3649c7fb-d95a-81d4-b470-e957f3467428">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="RE: CBREIM Dashboard Example for Pitching Purposes" data-client="CBRE Internal">+ My Day</button><a class="open-link" href="https://www.notion.so/RE-CBREIM-Dashboard-Example-for-Pitching-Purposes-3649c7fbd95a81d4b470e957f3467428" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">21 May</span><span class="status-inprogress">In Progress</span><span class="client-tag" style="background:#64748b18;color:#64748b;border-color:#64748b44">CBRE Internal</span></div><div class="task-ctx">Joseph Gilbert from CBRE has requested a Teams call with Lukasz Dolega to discuss the differences between EMEA Standard and custom dashboards. Joseph has provided his availability …</div></div>
-<div class="task-card" data-page-id="3659c7fb-d95a-81e0-adea-d61c4b3a3a67"><div class="card-header"><div class="card-title"> SV: Sydmarken 5 – 2025 Service Charge Reconciliation – Tenant Letters for Approval [BH-ACTIVE.FID548072]</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3659c7fb-d95a-81e0-adea-d61c4b3a3a67">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="SV: Sydmarken 5 – 2025 Service Charge Reconciliation – Tenant Letters for Approval [BH-ACTIVE.FID548072]" data-client="">+ My Day</button><a class="open-link" href="https://www.notion.so/SV-Sydmarken-5-2025-Service-Charge-Reconciliation-Tenant-Letters-for-Approval-BH-ACTIVE-FID548-3659c7fbd95a81e0adead61c4b3a3a67" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">22 May</span></div><div class="task-ctx">Joseph Gilbert from CBRE has received comments regarding the 2025 service charge reconciliation from Mathias Storgaard at Bruun &amp; Hjejle. The comments highlight three areas of conc…</div></div>
-<div class="task-card" data-page-id="3669c7fb-d95a-8113-a2f8-f890a33540f7"><div class="card-header"><div class="card-title"> 14WD Collection Deadline May-2026_Central Properties</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3669c7fb-d95a-8113-a2f8-f890a33540f7">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="14WD Collection Deadline May-2026_Central Properties" data-client="">+ My Day</button><a class="open-link" href="https://www.notion.so/14WD-Collection-Deadline-May-2026_Central-Properties-3669c7fbd95a8113a2f8f890a33540f7" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">23 May</span></div><div class="task-ctx">Naveen Kumar has sent an email requesting confirmation on whether any reminders should be sent regarding the attached ageing report. He has asked Fabian Wahlstrom to review the rep…</div></div>
-<div class="task-card" data-page-id="3669c7fb-d95a-81bb-af3e-ec6505c9e62c"><div class="card-header"><div class="card-title"> RE: Budget 2026</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3669c7fb-d95a-81bb-af3e-ec6505c9e62c">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="RE: Budget 2026" data-client="">+ My Day</button><a class="open-link" href="https://www.notion.so/RE-Budget-2026-3669c7fbd95a81bbaf3eec6505c9e62c" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">23 May</span></div><div class="task-ctx">Ewa Parys is seeking clarification on two points regarding the FY Budget and Forecast, noting a discrepancy of 200k. She requests updated files to provide aggregated data to tenant…</div></div>
-<div class="task-card" data-page-id="3669c7fb-d95a-814e-84b4-cc48f675f65e"><div class="card-header"><div class="card-title"> RE: Arbejdsplaner FM og Caretaker</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3669c7fb-d95a-814e-84b4-cc48f675f65e">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="RE: Arbejdsplaner FM og Caretaker" data-client="">+ My Day</button><a class="open-link" href="https://www.notion.so/RE-Arbejdsplaner-FM-og-Caretaker-3669c7fbd95a814e84b4cc48f675f65e" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">23 May</span></div><div class="task-ctx">Joseph Gilbert is requesting Youseff to resend the Excel files that detail the tasks for Mads and the caretaker, which were originally sent on February 3rd but are now inaccessible…</div></div>
-<div class="task-card" data-page-id="3669c7fb-d95a-811c-a9f7-caa4376c323d"><div class="card-header"><div class="card-title"> Kanalholmen - billing Mileway</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3669c7fb-d95a-811c-a9f7-caa4376c323d">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="Kanalholmen - billing Mileway" data-client="">+ My Day</button><a class="open-link" href="https://www.notion.so/Kanalholmen-billing-Mileway-3669c7fbd95a811ca9f7caa4376c323d" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">23 May</span></div><div class="task-ctx">Minh Doan discusses the challenges of invoicing Mileway for heat consumption based on actual usage, citing Rene Hougaard's concerns about the lack of a contractual basis for such c…</div></div>
-<div class="task-card" data-page-id="3669c7fb-d95a-81ed-b2fe-d938f19280c8"><div class="card-header"><div class="card-title"> Deepki data collection - urgent</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3669c7fb-d95a-81ed-b2fe-d938f19280c8">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="Deepki data collection - urgent" data-client="">+ My Day</button><a class="open-link" href="https://www.notion.so/Deepki-data-collection-urgent-3669c7fbd95a81edb2fed938f19280c8" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">23 May</span></div><div class="task-ctx">Klara Juhlin has informed Joseph and Nicholai about an urgent request from Rebecca regarding the logistics assets that need to be checked by the Property Manager (PM). The email sp…</div></div>
-<div class="task-card" data-page-id="3669c7fb-d95a-81ee-8294-ebfdbe856859"><div class="card-header"><div class="card-title"> RE: GRESB submission 2026 - PM input</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3669c7fb-d95a-81ee-8294-ebfdbe856859">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="RE: GRESB submission 2026 - PM input" data-client="">+ My Day</button><a class="open-link" href="https://www.notion.so/RE-GRESB-submission-2026-PM-input-3669c7fbd95a81ee8294ebfdbe856859" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">23 May</span></div><div class="task-ctx">Nicholai Porter acknowledges Joseph Gilbert's request and asks him to forward the meeting invite or any questions related to GRESB submissions. Joseph Gilbert mentions improvements…</div></div>
-<div class="task-card" data-page-id="3669c7fb-d95a-8141-9f80-c0bf3f8aa7b2"><div class="card-header"><div class="card-title"> Invoices KASTRUP - KHR (429787 - 429786 - 429784) - CGJ (158798 - 159050 - 159051)</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3669c7fb-d95a-8141-9f80-c0bf3f8aa7b2">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="Invoices KASTRUP - KHR (429787 - 429786 - 429784) - CGJ (158798 - 159050 - 159051)" data-client="">+ My Day</button><a class="open-link" href="https://www.notion.so/Invoices-KASTRUP-KHR-429787-429786-429784-CGJ-158798-159050-159051-3669c7fbd95a81419f80c0bf3f8aa7b2" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">23 May</span></div><div class="task-ctx">Gabriel Do Canto from AEW Invest GmbH has sent an email to the CBRE team requesting the initiation of payment for six attached invoices totaling approximately DKK 1,108,229 (EUR 14…</div></div>
-<div class="task-card" data-page-id="3669c7fb-d95a-81aa-abb4-ce39792701d3"><div class="card-header"><div class="card-title"> FW: M&amp;G Yardi Migration</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3669c7fb-d95a-81aa-abb4-ce39792701d3">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="FW: M&amp;G Yardi Migration" data-client="">+ My Day</button><a class="open-link" href="https://www.notion.so/FW-M-G-Yardi-Migration-3669c7fbd95a81aaabb4ce39792701d3" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">23 May</span></div><div class="task-ctx">Lars Brondt is seeking clarification on whether CBRE will receive a fee for participating in M&amp;G's Yardi migration, as his team has been informed that they will not. He highlights …</div></div>
-<div class="task-card" data-page-id="3679c7fb-d95a-81e5-bb85-c6e22c8e2355"><div class="card-header"><div class="card-title"> FW: Parkering - Lejenr t0060565</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3679c7fb-d95a-81e5-bb85-c6e22c8e2355">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="FW: Parkering - Lejenr t0060565" data-client="">+ My Day</button><a class="open-link" href="https://www.notion.so/FW-Parkering-Lejenr-t0060565-3679c7fbd95a81e5bb85c6e22c8e2355" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">24 May</span></div><div class="task-ctx">Berith Schmidt Jensen from Wallenborn Scandinavia A/S is requesting a credit for an invoice related to the 'Grønt område' which is no longer applicable. She mentions the amount of …</div></div>
-<div class="task-card" data-page-id="3689c7fb-d95a-8180-a2df-f2cab246429d"><div class="card-header"><div class="card-title"> Fw: Different leased area between CBRE and TMF</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3689c7fb-d95a-8180-a2df-f2cab246429d">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="Fw: Different leased area between CBRE and TMF" data-client="">+ My Day</button><a class="open-link" href="https://www.notion.so/Fw-Different-leased-area-between-CBRE-and-TMF-3689c7fbd95a8180a2dff2cab246429d" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">25 May</span><span class="status-inprogress">In Progress</span></div><div class="task-ctx">Beata Walter has reviewed the DK25 and DK0 net revenue figures for 2025, confirming they align with her calculations. She points out a discrepancy in pro rata percentages between h…</div></div>
-<div class="task-card" data-page-id="3679c7fb-d95a-8131-a471-fd559ff14c00"><div class="card-header"><div class="card-title"> SV: 05/2026 - VELF und HOOPP - arrears</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3679c7fb-d95a-8131-a471-fd559ff14c00">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="SV: 05/2026 - VELF und HOOPP - arrears" data-client="">+ My Day</button><a class="open-link" href="https://www.notion.so/SV-05-2026-VELF-und-HOOPP-arrears-3679c7fbd95a8131a471fd559ff14c00" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">25 May</span></div><div class="task-ctx">Daniel Carstens has requested Joseph Gilbert to start charging late payment fees on arrears to be more stringent with outstanding payments. Joseph responded with an attached arrear…</div></div>
-<div class="task-card" data-page-id="35e9c7fb-d95a-819d-b549-f9d48a86883d"><div class="card-header"><div class="card-title"> FW: Report - Q2 - Denmark</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="35e9c7fb-d95a-819d-b549-f9d48a86883d">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="FW: Report - Q2 - Denmark" data-client="AXA Nordic">+ My Day</button><a class="open-link" href="https://www.notion.so/FW-Report-Q2-Denmark-35e9c7fbd95a819db549f9d48a86883d" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">25 May</span><span class="client-tag" style="background:#0891b218;color:#0891b2;border-color:#0891b244">AXA Nordic</span></div><div class="task-ctx">Joseph Gilbert from CBRE A/S has confirmed the receipt of the final stage statement from Velux for the solar panel installation at Platinvej 14, Kolding. He attached the invoice an…</div></div>
-<div class="task-card" data-page-id="c4e1fdde-d9c4-4a14-bd6e-cf2c598b4b42"><div class="card-header"><div class="card-title"> Notify lawyers once FMD numbers are finalized so they can send the email</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="c4e1fdde-d9c4-4a14-bd6e-cf2c598b4b42">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="Notify lawyers once FMD numbers are finalized so they can send the email" data-client="AEWSYD">+ My Day</button><a class="open-link" href="https://www.notion.so/Notify-lawyers-once-FMD-numbers-are-finalized-so-they-can-send-the-email-c4e1fdded9c44a14bd6ecf2c598b4b42" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">26 May</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWSYD</span><span class="wt-tag">⚖️ Legal</span></div><div class="task-ctx">From St Malcolm V Service Charge Reconciliations meeting (21 May 2026). Lawyers will handle communication with FMD.</div></div>
-<div class="task-card" data-page-id="c85cfbf9-a011-42bb-8264-ca193eb98bd0"><div class="card-header"><div class="card-title"> Send 2025 reconciliation letters to lawyers for final approval</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="c85cfbf9-a011-42bb-8264-ca193eb98bd0">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="Send 2025 reconciliation letters to lawyers for final approval" data-client="AEWSYD">+ My Day</button><a class="open-link" href="https://www.notion.so/Send-2025-reconciliation-letters-to-lawyers-for-final-approval-c85cfbf9a01142bb8264ca193eb98bd0" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">26 May</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWSYD</span><span class="wt-tag">⚖️ Legal</span></div><div class="task-ctx">From St Malcolm V Service Charge Reconciliations meeting (21 May 2026). After numbers are verified.</div></div>
-<div class="task-card" data-page-id="1cab6789-f317-4c52-8044-6ef7ae6cb1aa"><div class="card-header"><div class="card-title"> Send 2025 reconciliation letters to tenants once approved by lawyers</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="1cab6789-f317-4c52-8044-6ef7ae6cb1aa">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="Send 2025 reconciliation letters to tenants once approved by lawyers" data-client="AEWSYD">+ My Day</button><a class="open-link" href="https://www.notion.so/Send-2025-reconciliation-letters-to-tenants-once-approved-by-lawyers-1cab6789f3174c5280446ef7ae6cb1aa" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">26 May</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWSYD</span><span class="wt-tag">💰 Finance / SC</span></div><div class="task-ctx">From St Malcolm V Service Charge Reconciliations meeting (21 May 2026). Send only after lawyers approve.</div></div>
-<div class="task-card" data-page-id="7fadc191-6021-46dc-a056-86442bee612c"><div class="card-header"><div class="card-title"> Double check the numbers for the 2025 service charge reconciliation</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="7fadc191-6021-46dc-a056-86442bee612c">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="Double check the numbers for the 2025 service charge reconciliation" data-client="AEWSYD">+ My Day</button><a class="open-link" href="https://www.notion.so/Double-check-the-numbers-for-the-2025-service-charge-reconciliation-7fadc191602146dca05686442bee612c" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">26 May</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWSYD</span><span class="wt-tag">💰 Finance / SC</span></div><div class="task-ctx">From St Malcolm V Service Charge Reconciliations meeting (21 May 2026). Verify numbers before sending to lawyers.</div></div>
-<div class="task-card" data-page-id="00563ec7-7f4d-4363-bfbd-b97da4b796ac"><div class="card-header"><div class="card-title"> Agree final numbers with FMD on 2024 reconciliation dispute</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="00563ec7-7f4d-4363-bfbd-b97da4b796ac">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="Agree final numbers with FMD on 2024 reconciliation dispute" data-client="AEWSYD">+ My Day</button><a class="open-link" href="https://www.notion.so/Agree-final-numbers-with-FMD-on-2024-reconciliation-dispute-00563ec77f4d4363bfbdb97da4b796ac" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">26 May</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWSYD</span><span class="wt-tag">💰 Finance / SC</span></div><div class="task-ctx">From St Malcolm V Service Charge Reconciliations meeting (21 May 2026). Ongoing dispute with FMD regarding 2024 service charge reconciliation.</div></div></div></section>
-  <section class="briefing-section"><div class="sec-head" style="color:#7a7468"><span>⏳ Waiting On</span><span class="sec-count">9</span></div><div class="task-list"><div class="task-row" data-page-id="ec8cda29-6539-4166-92cc-47b4c7562073"><div class="task-row-left"><span class="dot high">●</span><span class="task-row-title">Schedule individual meetings about CSAT scores for high-priority clients</span></div><div class="task-row-right"><span class="badge upcoming">29 May</span><span class="client-tag" style="background:#64748b18;color:#64748b;border-color:#64748b44">CBRE Internal</span><button class="done-btn-sm" onclick="markDone(this)" data-page-id="ec8cda29-6539-4166-92cc-47b4c7562073">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="Schedule individual meetings about CSAT scores for high-priority clients" data-client="CBRE Internal">+</button><a class="open-link" href="https://www.notion.so/Schedule-individual-meetings-about-CSAT-scores-for-high-priority-clients-ec8cda296539416692cc47b4c7562073" target="_blank">↗</a></div></div>
+
+<div class="dash-body">
+
+  <div class="dash-main">
+
+    <!-- Work Calendar -->
+    <div class="work-cal">
+      <div class="work-cal-title">📅 Work Calendar</div>
+      <div class="day-cols"><div class="day-col"><div class="day-col-hdr today-hdr"><strong>Today</strong><span>Wed 27 May</span></div><div class="cal-event past"><div class="ev-header"><span class="ev-time">09:00–10:00</span><a class="teams-link" href="https://teams.microsoft.com/l/meetup-join/19%3ameeting_YTk4MjgxNjMtNTM4YS00MGExLTllOGYtOTJlNTYzNDYzOTRl%40thread.v2/0?context=%7b%22Tid%22%3a%220159e9d0-09a0-4edf-96ba-a3deea363c28%22%2c%22Oid%22%3a%221f0b3032-a798-4724-8b86-b8f910f1ef20%22%7d" target="_blank">Join</a></div><div class="ev-title">AEW/CBRE - Sydmarken 5 - Bi-Weekly Watchlist Meeting</div></div></div><div class="day-col"><div class="day-col-hdr"><strong>Tomorrow</strong><span>Thu 28 May</span></div><div class="cal-event"><div class="ev-header"><span class="ev-time">09:00–09:30</span><a class="teams-link" href="https://teams.microsoft.com/l/meetup-join/19%3ameeting_YjJkNDU0NjEtMGVlYS00ZmQzLThiNTktYTY1ZWVmNTY5ZGQ1%40thread.v2/0?context=%7b%22Tid%22%3a%220159e9d0-09a0-4edf-96ba-a3deea363c28%22%2c%22Oid%22%3a%229b6f26f3-9c3b-4e9d-bbc7-6b4e2587e5df%22%7d" target="_blank">Join</a></div><div class="ev-title">PM Leasing update </div></div><div class="cal-event"><div class="ev-header"><span class="ev-time">13:00–14:00</span><a class="teams-link" href="https://teams.microsoft.com/l/meetup-join/19%3ameeting_MWEwNGQyMzYtODAwMy00NThlLWFjMWEtYjQzYzNiNDM2Njkw%40thread.v2/0?context=%7b%22Tid%22%3a%22d5bb6d35-8a82-4329-b49a-5030bd6497ab%22%2c%22Oid%22%3a%22ff3c2736-3382-4a4d-8c86-e9c5e777017f%22%7d" target="_blank">Join</a></div><div class="ev-title">Bi-Weekly PM Update Call Kastrup (new series)</div></div><div class="cal-event"><div class="ev-header"><span class="ev-time">13:00–14:00</span><a class="teams-link" href="https://teams.microsoft.com/l/meetup-join/19%3ameeting_YWNlNmY1YTctZWIzOS00NGQ3LTkyN2YtNTNhZTJkNmY4N2Vl%40thread.v2/0?context=%7b%22Tid%22%3a%220159e9d0-09a0-4edf-96ba-a3deea363c28%22%2c%22Oid%22%3a%2260313984-cd3b-48af-865a-34ff9ec0bd40%22%7d" target="_blank">Join</a></div><div class="ev-title">Yardi Champion: May Training (Reporting Proposition &amp; Process) </div></div></div><div class="day-col"><div class="day-col-hdr"><strong>Friday</strong><span>29 May</span></div><div class="cal-event"><div class="ev-header"><span class="ev-time">15:00–15:45</span></div><div class="ev-title">Pickup the girls</div></div></div></div>
+    </div>
+
+    <!-- Tasks -->
+    <section class="dash-section"><div class="sec-head" style="--sec-col:#b08a20"><span>⚡ Today</span><span class="sec-count">1</span></div><div class="task-grid"><div class="task-card" data-page-id="36d9c7fb-d95a-81ff-a5d5-ee1ae262397c"><div class="card-header"><div class="card-title"><span class="dot high">●</span> Approve invoices</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="36d9c7fb-d95a-81ff-a5d5-ee1ae262397c">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="Approve invoices" data-client="">+ Day</button><a class="open-link" href="https://www.notion.so/Approve-invoices-36d9c7fbd95a81ffa5d5ee1ae262397c" target="_blank">↗</a></div></div><div class="card-meta"><span class="wt-tag">Finance / SC</span></div></div></div></section>
+    <section class="dash-section"><div class="sec-head" style="--sec-col:#c8502a"><span>🔴 Overdue</span><span class="sec-count">31</span></div><div class="task-grid"><div class="task-card" data-page-id="3649c7fb-d95a-8105-a766-dbfab4bd8005"><div class="card-header"><div class="card-title"><span class="dot high">●</span> [K30/AEW] Issue underpayment invoice to YunExpress — DKK 1,268.75 incl. VAT</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3649c7fb-d95a-8105-a766-dbfab4bd8005">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="[K30/AEW] Issue underpayment invoice to YunExpress — DKK 1,268.75 incl. VAT" data-client="AEWSYD">+ Day</button><a class="open-link" href="https://www.notion.so/K30-AEW-Issue-underpayment-invoice-to-YunExpress-DKK-1-268-75-incl-VAT-3649c7fbd95a8105a766dbfab4bd8005" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">19 May</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWSYD</span><span class="wt-tag">Finance / SC</span></div><div class="task-ctx">Invoice YunExpress for the roof rent underpayment arising from the lease calculation error (DKK 500 net for 30.04.2024–29.04.2025 + DKK 515 net for 30.04.2025–29.04.2026 = DKK 1,01…</div></div>
+<div class="task-card" data-page-id="3649c7fb-d95a-818c-93b7-e5a16fe71d1c"><div class="card-header"><div class="card-title"><span class="dot high">●</span> [K30/AEW] Correct monthly roof rent in Yardi — DKK 34,877.09 net from 30 Apr 2026</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3649c7fb-d95a-818c-93b7-e5a16fe71d1c">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="[K30/AEW] Correct monthly roof rent in Yardi — DKK 34,877.09 net from 30 Apr 2026" data-client="AEWSYD">+ Day</button><a class="open-link" href="https://www.notion.so/K30-AEW-Correct-monthly-roof-rent-in-Yardi-DKK-34-877-09-net-from-30-Apr-2026-3649c7fbd95a818c93b7e5a16fe71d1c" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">19 May</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWSYD</span><span class="wt-tag">Finance / SC</span></div><div class="task-ctx">Update Yardi billing for YunExpress roof rent to DKK 34,877.09 net/month (was incorrectly billed at DKK 32,875/month base, and DKK 33,861.25 after last indexation). New figure refl…</div></div>
+<div class="task-card" data-page-id="34c9c7fb-d95a-81d1-a6a7-c179a7287dea"><div class="card-header"><div class="card-title"><span class="dot high">●</span> Sydmarken 5 — Complete Mads setup as first approver in Yardi PayScan</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="34c9c7fb-d95a-81d1-a6a7-c179a7287dea">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="Sydmarken 5 — Complete Mads setup as first approver in Yardi PayScan" data-client="AEWSYD">+ Day</button><a class="open-link" href="https://www.notion.so/Sydmarken-5-Complete-Mads-setup-as-first-approver-in-Yardi-PayScan-34c9c7fbd95a81d1a6a7c179a7287dea" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">26 May</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWSYD</span><span class="wt-tag">Internal</span></div><div class="task-ctx">Direct response to Jeppe's complaint about thin invoice descriptions. Mads to be added to Yardi as first approver — every new invoice validated at source for description quality, p…</div></div>
+<div class="task-card" data-page-id="3649c7fb-d95a-81b0-9124-c7b6dfd63670"><div class="card-header"><div class="card-title"> [K30/AEW] Confirm payment status of invoice 202600000070 (DKK 782.74 incl. VAT)</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3649c7fb-d95a-81b0-9124-c7b6dfd63670">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="[K30/AEW] Confirm payment status of invoice 202600000070 (DKK 782.74 incl. VAT)" data-client="AEWSYD">+ Day</button><a class="open-link" href="https://www.notion.so/K30-AEW-Confirm-payment-status-of-invoice-202600000070-DKK-782-74-incl-VAT-3649c7fbd95a81b09124c7b6dfd63670" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">21 May</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWSYD</span><span class="wt-tag">Finance / SC</span></div><div class="task-ctx">Invoice 202600000070 (DKK 782.74 incl. VAT) is the one-day indexation catch-up for 30 April 2026 — separate from the Addendum 3 underpayment. YunExpress queried it on 28–29 April 2…</div></div>
+<div class="task-card" data-page-id="3649c7fb-d95a-8157-9cd6-e5452013bd5d"><div class="card-header"><div class="card-title"> [AEW-KYS] Verify and update HiServ move-in date in Yardi</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3649c7fb-d95a-8157-9cd6-e5452013bd5d">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="[AEW-KYS] Verify and update HiServ move-in date in Yardi" data-client="AEWKYS">+ Day</button><a class="open-link" href="https://www.notion.so/AEW-KYS-Verify-and-update-HiServ-move-in-date-in-Yardi-3649c7fbd95a81579cd6e5452013bd5d" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">22 May</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWKYS</span><span class="wt-tag">Internal</span></div><div class="task-ctx">HiServ move-in date shows 15 July in Yardi but may not be accurate given KHR delivery delays. Confirm actual delivery date with KHR and update Yardi via Olga. 4 vacant units remain…</div></div>
+<div class="task-card" data-page-id="3649c7fb-d95a-8158-873d-e7fe131d1562"><div class="card-header"><div class="card-title"> [AEW-KYS] Flag PostNord contractor complaints formally to KHR</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3649c7fb-d95a-8158-873d-e7fe131d1562">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="[AEW-KYS] Flag PostNord contractor complaints formally to KHR" data-client="AEWKYS">+ Day</button><a class="open-link" href="https://www.notion.so/AEW-KYS-Flag-PostNord-contractor-complaints-formally-to-KHR-3649c7fbd95a8158873de7fe131d1562" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">22 May</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWKYS</span><span class="wt-tag">Client Relations</span></div><div class="task-ctx">Formally notify KHR of PostNord's complaints from the monthly meeting (18 May): (1) water cut-offs without 3-5 day notice; (2) ABA fire alarm covers on emergency exits still not fi…</div></div>
+<div class="task-card" data-page-id="3649c7fb-d95a-81f7-b8e8-dba99bb7e441"><div class="card-header"><div class="card-title"> [AEW-KYS] Chase PostNord termination dates and initiate reinstatement planning</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3649c7fb-d95a-81f7-b8e8-dba99bb7e441">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="[AEW-KYS] Chase PostNord termination dates and initiate reinstatement planning" data-client="AEWKYS">+ Day</button><a class="open-link" href="https://www.notion.so/AEW-KYS-Chase-PostNord-termination-dates-and-initiate-reinstatement-planning-3649c7fbd95a81f7b8e8dba99bb7e441" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">22 May</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWKYS</span><span class="wt-tag">Chasing</span></div><div class="task-ctx">Termination dates still not confirmed with PostNord. Chase and confirm. Also initiate planning for reinstatement cost assessment — likely KHR to lead but needs scoping. Relevant to…</div></div>
+<div class="task-card" data-page-id="3649c7fb-d95a-81e1-b070-da089a7e1d19"><div class="card-header"><div class="card-title"> [AEW-KYS] Send post-meeting watchlist update to Johannes</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3649c7fb-d95a-81e1-b070-da089a7e1d19">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="[AEW-KYS] Send post-meeting watchlist update to Johannes" data-client="AEWKYS">+ Day</button><a class="open-link" href="https://www.notion.so/AEW-KYS-Send-post-meeting-watchlist-update-to-Johannes-3649c7fbd95a81e1b070da089a7e1d19" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">23 May</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWKYS</span><span class="wt-tag">Reporting</span></div><div class="task-ctx">Send updated watchlist to Johannes (AEW) following Thursday 21 May site visit. Include: ASR move-in outcome, gate decision, Wallenborn parking resolution, PostNord contractor compl…</div></div>
+<div class="task-card" data-page-id="3649c7fb-d95a-81a1-9ea4-c71ae9251ff2"><div class="card-header"><div class="card-title"> [AEW-KYS] Attend Techem on-site meeting — sub-meter mapping</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3649c7fb-d95a-81a1-9ea4-c71ae9251ff2">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="[AEW-KYS] Attend Techem on-site meeting — sub-meter mapping" data-client="AEWKYS">+ Day</button><a class="open-link" href="https://www.notion.so/AEW-KYS-Attend-Techem-on-site-meeting-sub-meter-mapping-3649c7fbd95a81a19ea4c71ae9251ff2" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">26 May</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWKYS</span><span class="wt-tag">Internal</span></div><div class="task-ctx">On-site meeting with Techem confirmed 26 May. Bring electrician and plumber. Agenda: meter mapping across site, check meter installation following unit setup changes, and assess sm…</div></div>
+<div class="task-card" data-page-id="35e9c7fb-d95a-81a0-89b0-fdf47f62357b"><div class="card-header"><div class="card-title"> Re: Property valuations follow-up email</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="35e9c7fb-d95a-81a0-89b0-fdf47f62357b">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="Re: Property valuations follow-up email" data-client="CBRE Internal">+ Day</button><a class="open-link" href="https://www.notion.so/Re-Property-valuations-follow-up-email-35e9c7fbd95a81a089b0fdf47f62357b" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">15 May</span><span class="client-tag" style="background:#64748b18;color:#64748b;border-color:#64748b44">CBRE Internal</span></div><div class="task-ctx">Johanne Kirkerud from CBRE A/S is following up on previous communications regarding new Danish property valuations and the upcoming valuation process, emphasizing the importance of…</div></div>
+<div class="task-card" data-page-id="35e9c7fb-d95a-81cf-81e0-c6e83b6ddc58"><div class="card-header"><div class="card-title"> Re: Csat emails thanking clients</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="35e9c7fb-d95a-81cf-81e0-c6e83b6ddc58">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="Re: Csat emails thanking clients" data-client="">+ Day</button><a class="open-link" href="https://www.notion.so/Re-Csat-emails-thanking-clients-35e9c7fbd95a81cf81e0c6e83b6ddc58" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">17 May</span></div><div class="task-ctx">Johanne has adjusted the wording of the client emails regarding the CSAT survey follow-ups based on feedback from Lars. Lars suggested a modification to the timeline mentioned in t…</div></div>
+<div class="task-card" data-page-id="3619c7fb-d95a-81c3-84cc-f67b41215c7d"><div class="card-header"><div class="card-title"> RE: Sharefile Kastrup</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3619c7fb-d95a-81c3-84cc-f67b41215c7d">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="RE: Sharefile Kastrup" data-client="AEWKYS">+ Day</button><a class="open-link" href="https://www.notion.so/RE-Sharefile-Kastrup-3619c7fbd95a81c384ccf67b41215c7d" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">18 May</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWKYS</span></div><div class="task-ctx">Joseph Gilbert from CBRE A/S discussed the limitations of uploading files to Sharefile due to restrictions on their laptops, stating that they can only upload to OneDrive and their…</div></div>
+<div class="task-card" data-page-id="3649c7fb-d95a-81d4-b470-e957f3467428"><div class="card-header"><div class="card-title"> RE: CBREIM Dashboard Example for Pitching Purposes</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3649c7fb-d95a-81d4-b470-e957f3467428">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="RE: CBREIM Dashboard Example for Pitching Purposes" data-client="CBRE Internal">+ Day</button><a class="open-link" href="https://www.notion.so/RE-CBREIM-Dashboard-Example-for-Pitching-Purposes-3649c7fbd95a81d4b470e957f3467428" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">21 May</span><span class="client-tag" style="background:#64748b18;color:#64748b;border-color:#64748b44">CBRE Internal</span></div><div class="task-ctx">Joseph Gilbert from CBRE has requested a Teams call with Lukasz Dolega to discuss the differences between EMEA Standard and custom dashboards. Joseph has provided his availability …</div></div>
+<div class="task-card" data-page-id="3659c7fb-d95a-81e0-adea-d61c4b3a3a67"><div class="card-header"><div class="card-title"> SV: Sydmarken 5 – 2025 Service Charge Reconciliation – Tenant Letters for Approval [BH-ACTIVE.FID548072]</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3659c7fb-d95a-81e0-adea-d61c4b3a3a67">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="SV: Sydmarken 5 – 2025 Service Charge Reconciliation – Tenant Letters for Approval [BH-ACTIVE.FID548072]" data-client="">+ Day</button><a class="open-link" href="https://www.notion.so/SV-Sydmarken-5-2025-Service-Charge-Reconciliation-Tenant-Letters-for-Approval-BH-ACTIVE-FID548-3659c7fbd95a81e0adead61c4b3a3a67" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">22 May</span></div><div class="task-ctx">Joseph Gilbert from CBRE has received comments regarding the 2025 service charge reconciliation from Mathias Storgaard at Bruun &amp; Hjejle. The comments highlight three areas of conc…</div></div>
+<div class="task-card" data-page-id="3669c7fb-d95a-8113-a2f8-f890a33540f7"><div class="card-header"><div class="card-title"> 14WD Collection Deadline May-2026_Central Properties</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3669c7fb-d95a-8113-a2f8-f890a33540f7">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="14WD Collection Deadline May-2026_Central Properties" data-client="">+ Day</button><a class="open-link" href="https://www.notion.so/14WD-Collection-Deadline-May-2026_Central-Properties-3669c7fbd95a8113a2f8f890a33540f7" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">23 May</span></div><div class="task-ctx">Naveen Kumar has sent an email requesting confirmation on whether any reminders should be sent regarding the attached ageing report. He has asked Fabian Wahlstrom to review the rep…</div></div>
+<div class="task-card" data-page-id="3669c7fb-d95a-81bb-af3e-ec6505c9e62c"><div class="card-header"><div class="card-title"> RE: Budget 2026</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3669c7fb-d95a-81bb-af3e-ec6505c9e62c">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="RE: Budget 2026" data-client="">+ Day</button><a class="open-link" href="https://www.notion.so/RE-Budget-2026-3669c7fbd95a81bbaf3eec6505c9e62c" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">23 May</span></div><div class="task-ctx">Ewa Parys is seeking clarification on two points regarding the FY Budget and Forecast, noting a discrepancy of 200k. She requests updated files to provide aggregated data to tenant…</div></div>
+<div class="task-card" data-page-id="3669c7fb-d95a-814e-84b4-cc48f675f65e"><div class="card-header"><div class="card-title"> RE: Arbejdsplaner FM og Caretaker</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3669c7fb-d95a-814e-84b4-cc48f675f65e">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="RE: Arbejdsplaner FM og Caretaker" data-client="">+ Day</button><a class="open-link" href="https://www.notion.so/RE-Arbejdsplaner-FM-og-Caretaker-3669c7fbd95a814e84b4cc48f675f65e" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">23 May</span></div><div class="task-ctx">Joseph Gilbert is requesting Youseff to resend the Excel files that detail the tasks for Mads and the caretaker, which were originally sent on February 3rd but are now inaccessible…</div></div>
+<div class="task-card" data-page-id="3669c7fb-d95a-811c-a9f7-caa4376c323d"><div class="card-header"><div class="card-title"> Kanalholmen - billing Mileway</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3669c7fb-d95a-811c-a9f7-caa4376c323d">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="Kanalholmen - billing Mileway" data-client="">+ Day</button><a class="open-link" href="https://www.notion.so/Kanalholmen-billing-Mileway-3669c7fbd95a811ca9f7caa4376c323d" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">23 May</span></div><div class="task-ctx">Minh Doan discusses the challenges of invoicing Mileway for heat consumption based on actual usage, citing Rene Hougaard's concerns about the lack of a contractual basis for such c…</div></div>
+<div class="task-card" data-page-id="3669c7fb-d95a-81ed-b2fe-d938f19280c8"><div class="card-header"><div class="card-title"> Deepki data collection - urgent</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3669c7fb-d95a-81ed-b2fe-d938f19280c8">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="Deepki data collection - urgent" data-client="">+ Day</button><a class="open-link" href="https://www.notion.so/Deepki-data-collection-urgent-3669c7fbd95a81edb2fed938f19280c8" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">23 May</span></div><div class="task-ctx">Klara Juhlin has informed Joseph and Nicholai about an urgent request from Rebecca regarding the logistics assets that need to be checked by the Property Manager (PM). The email sp…</div></div>
+<div class="task-card" data-page-id="3669c7fb-d95a-81ee-8294-ebfdbe856859"><div class="card-header"><div class="card-title"> RE: GRESB submission 2026 - PM input</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3669c7fb-d95a-81ee-8294-ebfdbe856859">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="RE: GRESB submission 2026 - PM input" data-client="">+ Day</button><a class="open-link" href="https://www.notion.so/RE-GRESB-submission-2026-PM-input-3669c7fbd95a81ee8294ebfdbe856859" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">23 May</span></div><div class="task-ctx">Nicholai Porter acknowledges Joseph Gilbert's request and asks him to forward the meeting invite or any questions related to GRESB submissions. Joseph Gilbert mentions improvements…</div></div>
+<div class="task-card" data-page-id="3669c7fb-d95a-8141-9f80-c0bf3f8aa7b2"><div class="card-header"><div class="card-title"> Invoices KASTRUP - KHR (429787 - 429786 - 429784) - CGJ (158798 - 159050 - 159051)</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3669c7fb-d95a-8141-9f80-c0bf3f8aa7b2">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="Invoices KASTRUP - KHR (429787 - 429786 - 429784) - CGJ (158798 - 159050 - 159051)" data-client="">+ Day</button><a class="open-link" href="https://www.notion.so/Invoices-KASTRUP-KHR-429787-429786-429784-CGJ-158798-159050-159051-3669c7fbd95a81419f80c0bf3f8aa7b2" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">23 May</span></div><div class="task-ctx">Gabriel Do Canto from AEW Invest GmbH has sent an email to the CBRE team requesting the initiation of payment for six attached invoices totaling approximately DKK 1,108,229 (EUR 14…</div></div>
+<div class="task-card" data-page-id="3669c7fb-d95a-81aa-abb4-ce39792701d3"><div class="card-header"><div class="card-title"> FW: M&amp;G Yardi Migration</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3669c7fb-d95a-81aa-abb4-ce39792701d3">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="FW: M&amp;G Yardi Migration" data-client="">+ Day</button><a class="open-link" href="https://www.notion.so/FW-M-G-Yardi-Migration-3669c7fbd95a81aaabb4ce39792701d3" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">23 May</span></div><div class="task-ctx">Lars Brondt is seeking clarification on whether CBRE will receive a fee for participating in M&amp;G's Yardi migration, as his team has been informed that they will not. He highlights …</div></div>
+<div class="task-card" data-page-id="3679c7fb-d95a-81e5-bb85-c6e22c8e2355"><div class="card-header"><div class="card-title"> FW: Parkering - Lejenr t0060565</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3679c7fb-d95a-81e5-bb85-c6e22c8e2355">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="FW: Parkering - Lejenr t0060565" data-client="">+ Day</button><a class="open-link" href="https://www.notion.so/FW-Parkering-Lejenr-t0060565-3679c7fbd95a81e5bb85c6e22c8e2355" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">24 May</span></div><div class="task-ctx">Berith Schmidt Jensen from Wallenborn Scandinavia A/S is requesting a credit for an invoice related to the 'Grønt område' which is no longer applicable. She mentions the amount of …</div></div>
+<div class="task-card" data-page-id="3689c7fb-d95a-8180-a2df-f2cab246429d"><div class="card-header"><div class="card-title"> Fw: Different leased area between CBRE and TMF</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3689c7fb-d95a-8180-a2df-f2cab246429d">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="Fw: Different leased area between CBRE and TMF" data-client="">+ Day</button><a class="open-link" href="https://www.notion.so/Fw-Different-leased-area-between-CBRE-and-TMF-3689c7fbd95a8180a2dff2cab246429d" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">25 May</span></div><div class="task-ctx">Beata Walter has reviewed the DK25 and DK0 net revenue figures for 2025, confirming they align with her calculations. She points out a discrepancy in pro rata percentages between h…</div></div>
+<div class="task-card" data-page-id="3679c7fb-d95a-8131-a471-fd559ff14c00"><div class="card-header"><div class="card-title"> SV: 05/2026 - VELF und HOOPP - arrears</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="3679c7fb-d95a-8131-a471-fd559ff14c00">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="SV: 05/2026 - VELF und HOOPP - arrears" data-client="">+ Day</button><a class="open-link" href="https://www.notion.so/SV-05-2026-VELF-und-HOOPP-arrears-3679c7fbd95a8131a471fd559ff14c00" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">25 May</span></div><div class="task-ctx">Daniel Carstens has requested Joseph Gilbert to start charging late payment fees on arrears to be more stringent with outstanding payments. Joseph responded with an attached arrear…</div></div>
+<div class="task-card" data-page-id="35e9c7fb-d95a-819d-b549-f9d48a86883d"><div class="card-header"><div class="card-title"> FW: Report - Q2 - Denmark</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="35e9c7fb-d95a-819d-b549-f9d48a86883d">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="FW: Report - Q2 - Denmark" data-client="AXA Nordic">+ Day</button><a class="open-link" href="https://www.notion.so/FW-Report-Q2-Denmark-35e9c7fbd95a819db549f9d48a86883d" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">25 May</span><span class="client-tag" style="background:#0891b218;color:#0891b2;border-color:#0891b244">AXA Nordic</span></div><div class="task-ctx">Joseph Gilbert from CBRE A/S has confirmed the receipt of the final stage statement from Velux for the solar panel installation at Platinvej 14, Kolding. He attached the invoice an…</div></div>
+<div class="task-card" data-page-id="c4e1fdde-d9c4-4a14-bd6e-cf2c598b4b42"><div class="card-header"><div class="card-title"> Notify lawyers once FMD numbers are finalized so they can send the email</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="c4e1fdde-d9c4-4a14-bd6e-cf2c598b4b42">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="Notify lawyers once FMD numbers are finalized so they can send the email" data-client="AEWSYD">+ Day</button><a class="open-link" href="https://www.notion.so/Notify-lawyers-once-FMD-numbers-are-finalized-so-they-can-send-the-email-c4e1fdded9c44a14bd6ecf2c598b4b42" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">26 May</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWSYD</span><span class="wt-tag">Legal</span></div><div class="task-ctx">From St Malcolm V Service Charge Reconciliations meeting (21 May 2026). Lawyers will handle communication with FMD.</div></div>
+<div class="task-card" data-page-id="c85cfbf9-a011-42bb-8264-ca193eb98bd0"><div class="card-header"><div class="card-title"> Send 2025 reconciliation letters to lawyers for final approval</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="c85cfbf9-a011-42bb-8264-ca193eb98bd0">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="Send 2025 reconciliation letters to lawyers for final approval" data-client="AEWSYD">+ Day</button><a class="open-link" href="https://www.notion.so/Send-2025-reconciliation-letters-to-lawyers-for-final-approval-c85cfbf9a01142bb8264ca193eb98bd0" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">26 May</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWSYD</span><span class="wt-tag">Legal</span></div><div class="task-ctx">From St Malcolm V Service Charge Reconciliations meeting (21 May 2026). After numbers are verified.</div></div>
+<div class="task-card" data-page-id="1cab6789-f317-4c52-8044-6ef7ae6cb1aa"><div class="card-header"><div class="card-title"> Send 2025 reconciliation letters to tenants once approved by lawyers</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="1cab6789-f317-4c52-8044-6ef7ae6cb1aa">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="Send 2025 reconciliation letters to tenants once approved by lawyers" data-client="AEWSYD">+ Day</button><a class="open-link" href="https://www.notion.so/Send-2025-reconciliation-letters-to-tenants-once-approved-by-lawyers-1cab6789f3174c5280446ef7ae6cb1aa" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">26 May</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWSYD</span><span class="wt-tag">Finance / SC</span></div><div class="task-ctx">From St Malcolm V Service Charge Reconciliations meeting (21 May 2026). Send only after lawyers approve.</div></div>
+<div class="task-card" data-page-id="7fadc191-6021-46dc-a056-86442bee612c"><div class="card-header"><div class="card-title"> Double check the numbers for the 2025 service charge reconciliation</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="7fadc191-6021-46dc-a056-86442bee612c">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="Double check the numbers for the 2025 service charge reconciliation" data-client="AEWSYD">+ Day</button><a class="open-link" href="https://www.notion.so/Double-check-the-numbers-for-the-2025-service-charge-reconciliation-7fadc191602146dca05686442bee612c" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">26 May</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWSYD</span><span class="wt-tag">Finance / SC</span></div><div class="task-ctx">From St Malcolm V Service Charge Reconciliations meeting (21 May 2026). Verify numbers before sending to lawyers.</div></div>
+<div class="task-card" data-page-id="00563ec7-7f4d-4363-bfbd-b97da4b796ac"><div class="card-header"><div class="card-title"> Agree final numbers with FMD on 2024 reconciliation dispute</div><div class="card-actions"><button class="done-btn" onclick="markDone(this)" data-page-id="00563ec7-7f4d-4363-bfbd-b97da4b796ac">✓ Done</button><button class="add-day-btn" onclick="addToMyDay(this)" data-title="Agree final numbers with FMD on 2024 reconciliation dispute" data-client="AEWSYD">+ Day</button><a class="open-link" href="https://www.notion.so/Agree-final-numbers-with-FMD-on-2024-reconciliation-dispute-00563ec77f4d4363bfbdb97da4b796ac" target="_blank">↗</a></div></div><div class="card-meta"><span class="badge overdue">26 May</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWSYD</span><span class="wt-tag">Finance / SC</span></div><div class="task-ctx">From St Malcolm V Service Charge Reconciliations meeting (21 May 2026). Ongoing dispute with FMD regarding 2024 service charge reconciliation.</div></div></div></section>
+    <section class="dash-section"><div class="sec-head" style="--sec-col:#7a7468"><span>⏳ Waiting On</span><span class="sec-count">15</span></div><div class="task-list"><div class="task-row" data-page-id="83a6f2e5-44cd-4337-9889-6c3abbb89f8b"><div class="task-row-left"><span class="dot high">●</span><span class="task-row-title">AXA — Position Sophie/Joseph team setup to Hamza</span></div><div class="task-row-right"><span class="badge upcoming">29 May</span><span class="client-tag" style="background:#0891b218;color:#0891b2;border-color:#0891b244">AXA Nordic</span><button class="done-btn-sm" onclick="markDone(this)" data-page-id="83a6f2e5-44cd-4337-9889-6c3abbb89f8b">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="AXA — Position Sophie/Joseph team setup to Hamza" data-client="AXA Nordic">+</button><a class="open-link" href="https://www.notion.so/AXA-Position-Sophie-Joseph-team-setup-to-Hamza-83a6f2e544cd433798896c3abbb89f8b" target="_blank">↗</a></div></div>
+<div class="task-row" data-page-id="ec8cda29-6539-4166-92cc-47b4c7562073"><div class="task-row-left"><span class="dot high">●</span><span class="task-row-title">Schedule individual meetings about CSAT scores for high-priority clients</span></div><div class="task-row-right"><span class="badge upcoming">29 May</span><span class="client-tag" style="background:#64748b18;color:#64748b;border-color:#64748b44">CBRE Internal</span><button class="done-btn-sm" onclick="markDone(this)" data-page-id="ec8cda29-6539-4166-92cc-47b4c7562073">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="Schedule individual meetings about CSAT scores for high-priority clients" data-client="CBRE Internal">+</button><a class="open-link" href="https://www.notion.so/Schedule-individual-meetings-about-CSAT-scores-for-high-priority-clients-ec8cda296539416692cc47b4c7562073" target="_blank">↗</a></div></div>
 <div class="task-row" data-page-id="3529c7fb-d95a-8153-ba1a-e0d6b86121cd"><div class="task-row-left"><span class="dot high">●</span><span class="task-row-title">Sydmarken 5 — Disposal process: time allocation and cost invoice to fund (Luxembourg)</span></div><div class="task-row-right"><span class="badge upcoming">29 May</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWSYD</span><button class="done-btn-sm" onclick="markDone(this)" data-page-id="3529c7fb-d95a-8153-ba1a-e0d6b86121cd">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="Sydmarken 5 — Disposal process: time allocation and cost invoice to fund (Luxembourg)" data-client="AEWSYD">+</button><a class="open-link" href="https://www.notion.so/Sydmarken-5-Disposal-process-time-allocation-and-cost-invoice-to-fund-Luxembourg-3529c7fbd95a8153ba1ae0d6b86121cd" target="_blank">↗</a></div></div>
 <div class="task-row" data-page-id="3529c7fb-d95a-8189-903b-c495395938ce"><div class="task-row-left"><span class="dot high">●</span><span class="task-row-title">Sydmarken 5 — Send budget pack to tenants (~13 May, week before meeting)</span></div><div class="task-row-right"><span class="badge upcoming">29 May</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWSYD</span><button class="done-btn-sm" onclick="markDone(this)" data-page-id="3529c7fb-d95a-8189-903b-c495395938ce">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="Sydmarken 5 — Send budget pack to tenants (~13 May, week before meeting)" data-client="AEWSYD">+</button><a class="open-link" href="https://www.notion.so/Sydmarken-5-Send-budget-pack-to-tenants-13-May-week-before-meeting-3529c7fbd95a8189903bc495395938ce" target="_blank">↗</a></div></div>
+<div class="task-row" data-page-id="921b843b-6cc7-44af-9bea-08334801e757"><div class="task-row-left"><span class="task-row-title">Sydmarken 5 — Double-check Cushman outstanding document list</span></div><div class="task-row-right"><span class="badge overdue">15 May</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWSYD</span><button class="done-btn-sm" onclick="markDone(this)" data-page-id="921b843b-6cc7-44af-9bea-08334801e757">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="Sydmarken 5 — Double-check Cushman outstanding document list" data-client="AEWSYD">+</button><a class="open-link" href="https://www.notion.so/Sydmarken-5-Double-check-Cushman-outstanding-document-list-921b843b6cc744af9bea08334801e757" target="_blank">↗</a></div></div>
+<div class="task-row" data-page-id="b4fc64a8-70cc-4dfd-84de-c455fc99b376"><div class="task-row-left"><span class="task-row-title">Sydmarken 5 — Provide Cushman with 2025 reconciliation details</span></div><div class="task-row-right"><span class="badge overdue">22 May</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWSYD</span><button class="done-btn-sm" onclick="markDone(this)" data-page-id="b4fc64a8-70cc-4dfd-84de-c455fc99b376">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="Sydmarken 5 — Provide Cushman with 2025 reconciliation details" data-client="AEWSYD">+</button><a class="open-link" href="https://www.notion.so/Sydmarken-5-Provide-Cushman-with-2025-reconciliation-details-b4fc64a870cc4dfd84dec455fc99b376" target="_blank">↗</a></div></div>
 <div class="task-row" data-page-id="3649c7fb-d95a-8179-b678-ee259d4e4b17"><div class="task-row-left"><span class="task-row-title">[AEW-KYS] Obtain facade refurbishment timeline from KHR; draft tenant notifications</span></div><div class="task-row-right"><span class="badge upcoming">29 May</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWKYS</span><button class="done-btn-sm" onclick="markDone(this)" data-page-id="3649c7fb-d95a-8179-b678-ee259d4e4b17">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="[AEW-KYS] Obtain facade refurbishment timeline from KHR; draft tenant notifications" data-client="AEWKYS">+</button><a class="open-link" href="https://www.notion.so/AEW-KYS-Obtain-facade-refurbishment-timeline-from-KHR-draft-tenant-notifications-3649c7fbd95a8179b678ee259d4e4b17" target="_blank">↗</a></div></div>
 <div class="task-row" data-page-id="3649c7fb-d95a-81e4-987e-dc2e9e1df154"><div class="task-row-left"><span class="task-row-title">[K30/AEW] Re-invoice YunExpress for workstation costs once AEW settles KHR invoices</span></div><div class="task-row-right"><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWSYD</span><button class="done-btn-sm" onclick="markDone(this)" data-page-id="3649c7fb-d95a-81e4-987e-dc2e9e1df154">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="[K30/AEW] Re-invoice YunExpress for workstation costs once AEW settles KHR invoices" data-client="AEWSYD">+</button><a class="open-link" href="https://www.notion.so/K30-AEW-Re-invoice-YunExpress-for-workstation-costs-once-AEW-settles-KHR-invoices-3649c7fbd95a81e4987edc2e9e1df154" target="_blank">↗</a></div></div>
 <div class="task-row" data-page-id="34c9c7fb-d95a-8164-ab75-e6058a272b8f"><div class="task-row-left"><span class="dot low">●</span><span class="task-row-title">Sydmarken 5 — Draft response to Jeppe on May 2025 meeting evidence</span></div><div class="task-row-right"><span class="badge overdue">2 May</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWSYD</span><button class="done-btn-sm" onclick="markDone(this)" data-page-id="34c9c7fb-d95a-8164-ab75-e6058a272b8f">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="Sydmarken 5 — Draft response to Jeppe on May 2025 meeting evidence" data-client="AEWSYD">+</button><a class="open-link" href="https://www.notion.so/Sydmarken-5-Draft-response-to-Jeppe-on-May-2025-meeting-evidence-34c9c7fbd95a8164ab75e6058a272b8f" target="_blank">↗</a></div></div>
 <div class="task-row" data-page-id="34d9c7fb-d95a-81ef-865e-c2e7bb2f358c"><div class="task-row-left"><span class="task-row-title">Register Zara fit-out additional fees in additional fee registry</span></div><div class="task-row-right"><span class="badge overdue">24 Apr</span><span class="client-tag" style="background:#065f4618;color:#065f46;border-color:#065f4644">M&amp;G</span><button class="done-btn-sm" onclick="markDone(this)" data-page-id="34d9c7fb-d95a-81ef-865e-c2e7bb2f358c">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="Register Zara fit-out additional fees in additional fee registry" data-client="M&amp;G">+</button><a class="open-link" href="https://www.notion.so/Register-Zara-fit-out-additional-fees-in-additional-fee-registry-34d9c7fbd95a81ef865ec2e7bb2f358c" target="_blank">↗</a></div></div>
 <div class="task-row" data-page-id="3649c7fb-d95a-81bd-ab1d-dca19186f4ff"><div class="task-row-left"><span class="task-row-title">FW: Driftsregnskab 2025 - Egedesvej 40</span></div><div class="task-row-right"><span class="badge overdue">21 May</span><span class="client-tag" style="background:#0891b218;color:#0891b2;border-color:#0891b244">AXA Nordic</span><button class="done-btn-sm" onclick="markDone(this)" data-page-id="3649c7fb-d95a-81bd-ab1d-dca19186f4ff">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="FW: Driftsregnskab 2025 - Egedesvej 40" data-client="AXA Nordic">+</button><a class="open-link" href="https://www.notion.so/FW-Driftsregnskab-2025-Egedesvej-40-3649c7fbd95a81bdab1ddca19186f4ff" target="_blank">↗</a></div></div>
-<div class="task-row" data-page-id="3569c7fb-d95a-818c-865f-f3440c84655f"><div class="task-row-left"><span class="task-row-title">Vestas trust NO56</span></div><div class="task-row-right"><span class="badge upcoming">29 May</span><span class="client-tag" style="background:#64748b18;color:#64748b;border-color:#64748b44">Vestas</span><button class="done-btn-sm" onclick="markDone(this)" data-page-id="3569c7fb-d95a-818c-865f-f3440c84655f">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="Vestas trust NO56" data-client="Vestas">+</button><a class="open-link" href="https://www.notion.so/Vestas-trust-NO56-3569c7fbd95a818c865ff3440c84655f" target="_blank">↗</a></div></div></div></section>
-  <section class="briefing-section"><div class="sec-head" style="color:#2563eb"><span>📅 This Week</span><span class="sec-count">3</span></div><div class="task-list"><div class="task-row" data-page-id="8f8cede3-e96c-4390-b93e-542d2e9afc30"><div class="task-row-left"><span class="dot high">●</span><span class="task-row-title">AXA — Arrange follow-up meeting with Hamza on feedback</span></div><div class="task-row-right"><span class="badge upcoming">29 May</span><span class="client-tag" style="background:#0891b218;color:#0891b2;border-color:#0891b244">AXA Nordic</span><button class="done-btn-sm" onclick="markDone(this)" data-page-id="8f8cede3-e96c-4390-b93e-542d2e9afc30">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="AXA — Arrange follow-up meeting with Hamza on feedback" data-client="AXA Nordic">+</button><a class="open-link" href="https://www.notion.so/AXA-Arrange-follow-up-meeting-with-Hamza-on-feedback-8f8cede3e96c4390b93e542d2e9afc30" target="_blank">↗</a></div></div>
-<div class="task-row" data-page-id="ed46084b-ed6e-45af-acbc-5e0cc0a2c839"><div class="task-row-left"><span class="task-row-title">Savills — Confirm NOI dashboard extra cost with Lukas</span></div><div class="task-row-right"><span class="badge upcoming">29 May</span><span class="client-tag" style="background:#64748b18;color:#64748b;border-color:#64748b44">SavillsIM</span><button class="done-btn-sm" onclick="markDone(this)" data-page-id="ed46084b-ed6e-45af-acbc-5e0cc0a2c839">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="Savills — Confirm NOI dashboard extra cost with Lukas" data-client="SavillsIM">+</button><a class="open-link" href="https://www.notion.so/Savills-Confirm-NOI-dashboard-extra-cost-with-Lukas-ed46084bed6e45afacbc5e0cc0a2c839" target="_blank">↗</a></div></div>
+<div class="task-row" data-page-id="3569c7fb-d95a-818c-865f-f3440c84655f"><div class="task-row-left"><span class="task-row-title">Vestas trust NO56</span></div><div class="task-row-right"><span class="badge upcoming">29 May</span><span class="client-tag" style="background:#64748b18;color:#64748b;border-color:#64748b44">Vestas</span><button class="done-btn-sm" onclick="markDone(this)" data-page-id="3569c7fb-d95a-818c-865f-f3440c84655f">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="Vestas trust NO56" data-client="Vestas">+</button><a class="open-link" href="https://www.notion.so/Vestas-trust-NO56-3569c7fbd95a818c865ff3440c84655f" target="_blank">↗</a></div></div>
+<div class="task-row" data-page-id="34d9c7fb-d95a-8194-abd3-e8bc455cbda9"><div class="task-row-left"><span class="task-row-title">Sydmarken 5 — Prepare works memo (3.5) with project manager</span></div><div class="task-row-right"><span class="badge upcoming">29 May</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWSYD</span><button class="done-btn-sm" onclick="markDone(this)" data-page-id="34d9c7fb-d95a-8194-abd3-e8bc455cbda9">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="Sydmarken 5 — Prepare works memo (3.5) with project manager" data-client="AEWSYD">+</button><a class="open-link" href="https://www.notion.so/Sydmarken-5-Prepare-works-memo-3-5-with-project-manager-34d9c7fbd95a8194abd3e8bc455cbda9" target="_blank">↗</a></div></div>
+<div class="task-row" data-page-id="34d9c7fb-d95a-81cb-b6c1-e90f5d14f4ed"><div class="task-row-left"><span class="task-row-title">Initiate pitch library — Savills materials &amp; PM presentation</span></div><div class="task-row-right"><span class="client-tag" style="background:#64748b18;color:#64748b;border-color:#64748b44">CBRE Internal</span><button class="done-btn-sm" onclick="markDone(this)" data-page-id="34d9c7fb-d95a-81cb-b6c1-e90f5d14f4ed">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="Initiate pitch library — Savills materials &amp; PM presentation" data-client="CBRE Internal">+</button><a class="open-link" href="https://www.notion.so/Initiate-pitch-library-Savills-materials-PM-presentation-34d9c7fbd95a81cbb6c1e90f5d14f4ed" target="_blank">↗</a></div></div>
+<div class="task-row" data-page-id="34d9c7fb-d95a-81cf-ad53-c8658f252a82"><div class="task-row-left"><span class="task-row-title">Sydmarken 5 — Chase Martin — municipality response re building &amp; occupancy permits</span></div><div class="task-row-right"><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWSYD</span><button class="done-btn-sm" onclick="markDone(this)" data-page-id="34d9c7fb-d95a-81cf-ad53-c8658f252a82">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="Sydmarken 5 — Chase Martin — municipality response re building &amp; occupancy permits" data-client="AEWSYD">+</button><a class="open-link" href="https://www.notion.so/Sydmarken-5-Chase-Martin-municipality-response-re-building-occupancy-permits-34d9c7fbd95a81cfad53c8658f252a82" target="_blank">↗</a></div></div></div></section>
+    <section class="dash-section"><div class="sec-head" style="--sec-col:#2563eb"><span>📅 This Week</span><span class="sec-count">2</span></div><div class="task-list"><div class="task-row" data-page-id="ed46084b-ed6e-45af-acbc-5e0cc0a2c839"><div class="task-row-left"><span class="task-row-title">Savills — Confirm NOI dashboard extra cost with Lukas</span></div><div class="task-row-right"><span class="badge upcoming">29 May</span><span class="client-tag" style="background:#64748b18;color:#64748b;border-color:#64748b44">SavillsIM</span><button class="done-btn-sm" onclick="markDone(this)" data-page-id="ed46084b-ed6e-45af-acbc-5e0cc0a2c839">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="Savills — Confirm NOI dashboard extra cost with Lukas" data-client="SavillsIM">+</button><a class="open-link" href="https://www.notion.so/Savills-Confirm-NOI-dashboard-extra-cost-with-Lukas-ed46084bed6e45afacbc5e0cc0a2c839" target="_blank">↗</a></div></div>
 <div class="task-row" data-page-id="3659c7fb-d95a-81fe-b4a0-cc94caef905f"><div class="task-row-left"><span class="task-row-title">Bi-weekly meeting prep</span></div><div class="task-row-right"><button class="done-btn-sm" onclick="markDone(this)" data-page-id="3659c7fb-d95a-81fe-b4a0-cc94caef905f">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="Bi-weekly meeting prep" data-client="">+</button><a class="open-link" href="https://www.notion.so/Bi-weekly-meeting-prep-3659c7fbd95a81feb4a0cc94caef905f" target="_blank">↗</a></div></div></div></section>
-  <section class="briefing-section"><div class="sec-head" style="color:#94a3b8"><span>📂 Later</span><span class="sec-count">19</span></div><div class="task-list"><div class="task-row" data-page-id="83a6f2e5-44cd-4337-9889-6c3abbb89f8b"><div class="task-row-left"><span class="dot high">●</span><span class="task-row-title">AXA — Position Sophie/Joseph team setup to Hamza</span></div><div class="task-row-right"><span class="badge upcoming">29 May</span><span class="client-tag" style="background:#0891b218;color:#0891b2;border-color:#0891b244">AXA Nordic</span><button class="done-btn-sm" onclick="markDone(this)" data-page-id="83a6f2e5-44cd-4337-9889-6c3abbb89f8b">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="AXA — Position Sophie/Joseph team setup to Hamza" data-client="AXA Nordic">+</button><a class="open-link" href="https://www.notion.so/AXA-Position-Sophie-Joseph-team-setup-to-Hamza-83a6f2e544cd433798896c3abbb89f8b" target="_blank">↗</a></div></div>
-<div class="task-row" data-page-id="441f350a-ba2b-459f-b793-10afafb13091"><div class="task-row-left"><span class="dot high">●</span><span class="task-row-title">AXA — Clarify Hamza's PM/OPEX and AM-light expectations</span></div><div class="task-row-right"><span class="badge upcoming">29 May</span><span class="client-tag" style="background:#0891b218;color:#0891b2;border-color:#0891b244">AXA Nordic</span><button class="done-btn-sm" onclick="markDone(this)" data-page-id="441f350a-ba2b-459f-b793-10afafb13091">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="AXA — Clarify Hamza's PM/OPEX and AM-light expectations" data-client="AXA Nordic">+</button><a class="open-link" href="https://www.notion.so/AXA-Clarify-Hamza-s-PM-OPEX-and-AM-light-expectations-441f350aba2b459fb79310afafb13091" target="_blank">↗</a></div></div>
+    <section class="dash-section"><div class="sec-head" style="--sec-col:#94a3b8"><span>📂 Later</span><span class="sec-count">13</span></div><div class="task-list"><div class="task-row" data-page-id="441f350a-ba2b-459f-b793-10afafb13091"><div class="task-row-left"><span class="dot high">●</span><span class="task-row-title">AXA — Clarify Hamza's PM/OPEX and AM-light expectations</span></div><div class="task-row-right"><span class="badge upcoming">29 May</span><span class="client-tag" style="background:#0891b218;color:#0891b2;border-color:#0891b244">AXA Nordic</span><button class="done-btn-sm" onclick="markDone(this)" data-page-id="441f350a-ba2b-459f-b793-10afafb13091">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="AXA — Clarify Hamza's PM/OPEX and AM-light expectations" data-client="AXA Nordic">+</button><a class="open-link" href="https://www.notion.so/AXA-Clarify-Hamza-s-PM-OPEX-and-AM-light-expectations-441f350aba2b459fb79310afafb13091" target="_blank">↗</a></div></div>
 <div class="task-row" data-page-id="1b188e4a-887b-4279-85ea-8b0403756874"><div class="task-row-left"><span class="dot high">●</span><span class="task-row-title">Send final SC reconciliation documents to tenants</span></div><div class="task-row-right"><span class="badge upcoming">29 May</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWSYD</span><button class="done-btn-sm" onclick="markDone(this)" data-page-id="1b188e4a-887b-4279-85ea-8b0403756874">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="Send final SC reconciliation documents to tenants" data-client="AEWSYD">+</button><a class="open-link" href="https://www.notion.so/Send-final-SC-reconciliation-documents-to-tenants-1b188e4a887b427985ea8b0403756874" target="_blank">↗</a></div></div>
-<div class="task-row" data-page-id="01d7786c-b976-4f64-93ad-9b32f533a383"><div class="task-row-left"><span class="task-row-title">AXA — Clarify reporting frequency and quality expectations</span></div><div class="task-row-right"><span class="badge upcoming">29 May</span><span class="client-tag" style="background:#0891b218;color:#0891b2;border-color:#0891b244">AXA Nordic</span><button class="done-btn-sm" onclick="markDone(this)" data-page-id="01d7786c-b976-4f64-93ad-9b32f533a383">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="AXA — Clarify reporting frequency and quality expectations" data-client="AXA Nordic">+</button><a class="open-link" href="https://www.notion.so/AXA-Clarify-reporting-frequency-and-quality-expectations-01d7786cb9764f6493ad9b32f533a383" target="_blank">↗</a></div></div>
 <div class="task-row" data-page-id="3649c7fb-d95a-813d-a457-d50457820be2"><div class="task-row-left"><span class="dot low">●</span><span class="task-row-title">[K30/AEW] Monitor Addendum 3 Phase 1 deadline — AEW fixed-price quote due by ~30 Jun 2026</span></div><div class="task-row-right"><span class="badge upcoming">30 Jun</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWSYD</span><button class="done-btn-sm" onclick="markDone(this)" data-page-id="3649c7fb-d95a-813d-a457-d50457820be2">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="[K30/AEW] Monitor Addendum 3 Phase 1 deadline — AEW fixed-price quote due by ~30 Jun 2026" data-client="AEWSYD">+</button><a class="open-link" href="https://www.notion.so/K30-AEW-Monitor-Addendum-3-Phase-1-deadline-AEW-fixed-price-quote-due-by-30-Jun-2026-3649c7fbd95a813da457d50457820be2" target="_blank">↗</a></div></div>
 <div class="task-row" data-page-id="3649c7fb-d95a-810c-8b63-f929a0144711"><div class="task-row-left"><span class="dot low">●</span><span class="task-row-title">[K30/AEW] Flag Phase 2 Addendum (Addendum 4) requirement when quote approved</span></div><div class="task-row-right"><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWSYD</span><button class="done-btn-sm" onclick="markDone(this)" data-page-id="3649c7fb-d95a-810c-8b63-f929a0144711">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="[K30/AEW] Flag Phase 2 Addendum (Addendum 4) requirement when quote approved" data-client="AEWSYD">+</button><a class="open-link" href="https://www.notion.so/K30-AEW-Flag-Phase-2-Addendum-Addendum-4-requirement-when-quote-approved-3649c7fbd95a810c8b63f929a0144711" target="_blank">↗</a></div></div>
 <div class="task-row" data-page-id="36c9c7fb-d95a-81bd-af62-f1294a109679"><div class="task-row-left"><span class="task-row-title">LinkedIn post +Pictureds</span></div><div class="task-row-right"><span class="badge upcoming">29 May</span><button class="done-btn-sm" onclick="markDone(this)" data-page-id="36c9c7fb-d95a-81bd-af62-f1294a109679">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="LinkedIn post +Pictureds" data-client="">+</button><a class="open-link" href="https://www.notion.so/LinkedIn-post-Pictureds-36c9c7fbd95a81bdaf62f1294a109679" target="_blank">↗</a></div></div>
 <div class="task-row" data-page-id="36c9c7fb-d95a-8151-b307-ca896787d73e"><div class="task-row-left"><span class="task-row-title">Csat internal team workshops</span></div><div class="task-row-right"><span class="badge upcoming">29 May</span><button class="done-btn-sm" onclick="markDone(this)" data-page-id="36c9c7fb-d95a-8151-b307-ca896787d73e">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="Csat internal team workshops" data-client="">+</button><a class="open-link" href="https://www.notion.so/Csat-internal-team-workshops-36c9c7fbd95a8151b307ca896787d73e" target="_blank">↗</a></div></div>
 <div class="task-row" data-page-id="36c9c7fb-d95a-815d-9999-f58a9ede4a3f"><div class="task-row-left"><span class="task-row-title">SV: Call - Sydmarken 5 FMD 2024 Reconciliation Comparison</span></div><div class="task-row-right"><span class="badge upcoming">29 May</span><button class="done-btn-sm" onclick="markDone(this)" data-page-id="36c9c7fb-d95a-815d-9999-f58a9ede4a3f">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="SV: Call - Sydmarken 5 FMD 2024 Reconciliation Comparison" data-client="">+</button><a class="open-link" href="https://www.notion.so/SV-Call-Sydmarken-5-FMD-2024-Reconciliation-Comparison-36c9c7fbd95a815d9999f58a9ede4a3f" target="_blank">↗</a></div></div>
 <div class="task-row" data-page-id="36b9c7fb-d95a-819d-bb1f-c8c3210a0028"><div class="task-row-left"><span class="task-row-title">FW: Copenhagen visit 16-17 June</span></div><div class="task-row-right"><span class="badge upcoming">29 May</span><button class="done-btn-sm" onclick="markDone(this)" data-page-id="36b9c7fb-d95a-819d-bb1f-c8c3210a0028">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="FW: Copenhagen visit 16-17 June" data-client="">+</button><a class="open-link" href="https://www.notion.so/FW-Copenhagen-visit-16-17-June-36b9c7fbd95a819dbb1fc8c3210a0028" target="_blank">↗</a></div></div>
-<div class="task-row" data-page-id="34d9c7fb-d95a-8194-abd3-e8bc455cbda9"><div class="task-row-left"><span class="task-row-title">Sydmarken 5 — Prepare works memo (3.5) with project manager</span></div><div class="task-row-right"><span class="badge upcoming">29 May</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWSYD</span><button class="done-btn-sm" onclick="markDone(this)" data-page-id="34d9c7fb-d95a-8194-abd3-e8bc455cbda9">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="Sydmarken 5 — Prepare works memo (3.5) with project manager" data-client="AEWSYD">+</button><a class="open-link" href="https://www.notion.so/Sydmarken-5-Prepare-works-memo-3-5-with-project-manager-34d9c7fbd95a8194abd3e8bc455cbda9" target="_blank">↗</a></div></div>
 <div class="task-row" data-page-id="34d9c7fb-d95a-8192-98c9-fec2473086b1"><div class="task-row-left"><span class="task-row-title">Final review &amp; sign-off — 2025 service charge reconciliation (waiting on Jean-Paul)</span></div><div class="task-row-right"><span class="badge upcoming">29 May</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWSYD</span><button class="done-btn-sm" onclick="markDone(this)" data-page-id="34d9c7fb-d95a-8192-98c9-fec2473086b1">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="Final review &amp; sign-off — 2025 service charge reconciliation (waiting on Jean-Paul)" data-client="AEWSYD">+</button><a class="open-link" href="https://www.notion.so/Final-review-sign-off-2025-service-charge-reconciliation-waiting-on-Jean-Paul-34d9c7fbd95a819298c9fec2473086b1" target="_blank">↗</a></div></div>
 <div class="task-row" data-page-id="35f9c7fb-d95a-814a-96ab-c1aba2223b7a"><div class="task-row-left"><span class="task-row-title">RE: K30 - Engineering costs - pits &amp; platform</span></div><div class="task-row-right"><span class="badge upcoming">1 Jun</span><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWKYS</span><button class="done-btn-sm" onclick="markDone(this)" data-page-id="35f9c7fb-d95a-814a-96ab-c1aba2223b7a">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="RE: K30 - Engineering costs - pits &amp; platform" data-client="AEWKYS">+</button><a class="open-link" href="https://www.notion.so/RE-K30-Engineering-costs-pits-platform-35f9c7fbd95a814a96abc1aba2223b7a" target="_blank">↗</a></div></div>
 <div class="task-row" data-page-id="34d9c7fb-d95a-8159-9e39-c3c5155afd28"><div class="task-row-left"><span class="task-row-title">[PERSONAL] Start applying for residency</span></div><div class="task-row-right"><span class="badge upcoming">1 Jun</span><span class="client-tag" style="background:#64748b18;color:#64748b;border-color:#64748b44">Personal</span><button class="done-btn-sm" onclick="markDone(this)" data-page-id="34d9c7fb-d95a-8159-9e39-c3c5155afd28">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="[PERSONAL] Start applying for residency" data-client="Personal">+</button><a class="open-link" href="https://www.notion.so/PERSONAL-Start-applying-for-residency-34d9c7fbd95a81599e39c3c5155afd28" target="_blank">↗</a></div></div>
 <div class="task-row" data-page-id="34d9c7fb-d95a-8171-b240-f9d7b2695432"><div class="task-row-left"><span class="task-row-title">Confirm KAM and team dashboard access for IM, Manova, and AXA</span></div><div class="task-row-right"><span class="badge upcoming">1 Jun</span><span class="client-tag" style="background:#64748b18;color:#64748b;border-color:#64748b44">CBRE Internal</span><button class="done-btn-sm" onclick="markDone(this)" data-page-id="34d9c7fb-d95a-8171-b240-f9d7b2695432">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="Confirm KAM and team dashboard access for IM, Manova, and AXA" data-client="CBRE Internal">+</button><a class="open-link" href="https://www.notion.so/Confirm-KAM-and-team-dashboard-access-for-IM-Manova-and-AXA-34d9c7fbd95a8171b240f9d7b2695432" target="_blank">↗</a></div></div>
-<div class="task-row" data-page-id="36c9c7fb-d95a-80a4-af43-cfb3e759e9be"><div class="task-row-left"><span class="task-row-title">Write to Magnus about budget deadline</span></div><div class="task-row-right"><button class="done-btn-sm" onclick="markDone(this)" data-page-id="36c9c7fb-d95a-80a4-af43-cfb3e759e9be">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="Write to Magnus about budget deadline" data-client="">+</button><a class="open-link" href="https://www.notion.so/Write-to-Magnus-about-budget-deadline-36c9c7fbd95a80a4af43cfb3e759e9be" target="_blank">↗</a></div></div>
-<div class="task-row" data-page-id="34d9c7fb-d95a-81cb-b6c1-e90f5d14f4ed"><div class="task-row-left"><span class="task-row-title">Initiate pitch library — Savills materials &amp; PM presentation</span></div><div class="task-row-right"><span class="client-tag" style="background:#64748b18;color:#64748b;border-color:#64748b44">CBRE Internal</span><button class="done-btn-sm" onclick="markDone(this)" data-page-id="34d9c7fb-d95a-81cb-b6c1-e90f5d14f4ed">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="Initiate pitch library — Savills materials &amp; PM presentation" data-client="CBRE Internal">+</button><a class="open-link" href="https://www.notion.so/Initiate-pitch-library-Savills-materials-PM-presentation-34d9c7fbd95a81cbb6c1e90f5d14f4ed" target="_blank">↗</a></div></div>
-<div class="task-row" data-page-id="34d9c7fb-d95a-81cf-ad53-c8658f252a82"><div class="task-row-left"><span class="task-row-title">Sydmarken 5 — Chase Martin — municipality response re building &amp; occupancy permits</span></div><div class="task-row-right"><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWSYD</span><button class="done-btn-sm" onclick="markDone(this)" data-page-id="34d9c7fb-d95a-81cf-ad53-c8658f252a82">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="Sydmarken 5 — Chase Martin — municipality response re building &amp; occupancy permits" data-client="AEWSYD">+</button><a class="open-link" href="https://www.notion.so/Sydmarken-5-Chase-Martin-municipality-response-re-building-occupancy-permits-34d9c7fbd95a81cfad53c8658f252a82" target="_blank">↗</a></div></div>
-<div class="task-row" data-page-id="34d9c7fb-d95a-812c-8123-e56e5d13d597"><div class="task-row-left"><span class="task-row-title">Add note to Yardi invoice 25-322 — chimney repair snagging, coded CAPEX</span></div><div class="task-row-right"><span class="client-tag" style="background:#2563eb18;color:#2563eb;border-color:#2563eb44">AEWSYD</span><button class="done-btn-sm" onclick="markDone(this)" data-page-id="34d9c7fb-d95a-812c-8123-e56e5d13d597">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="Add note to Yardi invoice 25-322 — chimney repair snagging, coded CAPEX" data-client="AEWSYD">+</button><a class="open-link" href="https://www.notion.so/Add-note-to-Yardi-invoice-25-322-chimney-repair-snagging-coded-CAPEX-34d9c7fbd95a812c8123e56e5d13d597" target="_blank">↗</a></div></div></div></section>
-</div>
-<div class="footer">Generated by GitHub Actions · Wednesday 27 May 2026 · 66 active tasks · Powered by Notion</div>
+<div class="task-row" data-page-id="36c9c7fb-d95a-80a4-af43-cfb3e759e9be"><div class="task-row-left"><span class="task-row-title">Write to Magnus about budget deadline</span></div><div class="task-row-right"><button class="done-btn-sm" onclick="markDone(this)" data-page-id="36c9c7fb-d95a-80a4-af43-cfb3e759e9be">✓</button><button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="Write to Magnus about budget deadline" data-client="">+</button><a class="open-link" href="https://www.notion.so/Write-to-Magnus-about-budget-deadline-36c9c7fbd95a80a4af43cfb3e759e9be" target="_blank">↗</a></div></div></div></section>
 
-<!-- ── MY DAY PANEL ── -->
+  </div>
+
+  <div class="dash-sidebar">
+
+    <!-- Email Triage -->
+    <div class="sidebar-section">
+      <div class="sidebar-title">
+        <span>📧 Email Triage</span>
+        <span class="stcount">0 new</span>
+      </div>
+      <div class="no-emails">No recent emails in the last 5 days.</div>
+    </div>
+
+    <!-- Family Calendar -->
+    <div class="sidebar-section">
+      <div class="sidebar-title">
+        <span>👨‍👩‍👧 Family</span>
+        <span class="stcount">7 days</span>
+      </div>
+      <div class="fam-row"><span class="fam-date">Today</span><div class="fam-events"><span class="fam-pill">🧑 Joe maybe away</span></div></div><div class="fam-row"><span class="fam-date">Fri 29 May</span><div class="fam-events"><span class="fam-pill">👨‍👩‍👧 18:00 ATP ejendomme sommerfest</span></div></div><div class="fam-row"><span class="fam-date">Sat 30 May</span><div class="fam-events"><span class="fam-pill">👨‍👩‍👧 09:00 Hannah gymnastik</span><span class="fam-pill">👨‍👩‍👧 17:00 Magisk dag</span></div></div>
+    </div>
+
+  </div>
+</div>
+
+<div class="footer">Generated by GitHub Actions · Wednesday 27 May 2026 · 62 open tasks · Daily Dashboard v2</div>
+
+<!-- MY DAY PANEL -->
 <div id="my-day-panel" class="collapsed">
   <div id="my-day-header" onclick="togglePanel()">
     <span id="my-day-title">✦ My Day</span>
@@ -315,7 +349,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
   </div>
   <div id="my-day-body">
     <ul id="my-day-list"></ul>
-    <p id="my-day-empty">Click "+ My Day" on any task to build your list.</p>
+    <p id="my-day-empty">Add tasks with + Day or +</p>
     <div class="day-actions">
       <button class="day-btn" id="btn-copy" onclick="copyList()">Copy List</button>
       <button class="day-btn" id="btn-clear" onclick="clearList()">Clear</button>
@@ -325,14 +359,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
 </div>
 
 <script>
+  var WORKER_URL = "https://notion-proxy.jgilbert82.workers.dev";
   var items = [];
   var dragSrc = null;
 
   function togglePanel() {
     var p = document.getElementById('my-day-panel');
     var t = document.getElementById('my-day-toggle');
-    var collapsed = p.classList.toggle('collapsed');
-    t.textContent = collapsed ? '▲' : '▼';
+    var c = p.classList.toggle('collapsed');
+    t.textContent = c ? '▲' : '▼';
   }
 
   function addToMyDay(btn) {
@@ -341,20 +376,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
     var client = btn.getAttribute('data-client');
     if (items.some(function(i) { return i.title === title; })) return;
     items.push({ title: title, client: client });
-    btn.classList.add('added');
-    btn.textContent = btn.classList.contains('add-day-btn-sm') ? '✓' : '✓ Added';
-
-    // Also mark any duplicate button for same task
     document.querySelectorAll('[data-title="' + title.replace(/"/g, '\"') + '"]').forEach(function(el) {
       if (el.classList.contains('add-day-btn') || el.classList.contains('add-day-btn-sm')) {
         el.classList.add('added');
         el.textContent = el.classList.contains('add-day-btn-sm') ? '✓' : '✓ Added';
       }
     });
-
     renderList();
-
-    // Open panel if collapsed
     var p = document.getElementById('my-day-panel');
     if (p.classList.contains('collapsed')) {
       p.classList.remove('collapsed');
@@ -364,11 +392,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
 
   function removeItem(idx) {
     var removed = items.splice(idx, 1)[0];
-    // Re-enable the add buttons for this task
     document.querySelectorAll('[data-title="' + removed.title.replace(/"/g, '\"') + '"]').forEach(function(el) {
       if (el.classList.contains('add-day-btn') || el.classList.contains('add-day-btn-sm')) {
         el.classList.remove('added');
-        el.textContent = el.classList.contains('add-day-btn-sm') ? '+' : '+ My Day';
+        el.textContent = el.classList.contains('add-day-btn-sm') ? '+' : '+ Day';
       }
     });
     renderList();
@@ -390,8 +417,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
         '<span class="day-text">' + escHtml(item.title) +
           (item.client ? '<span class="day-client">' + escHtml(item.client) + '</span>' : '') +
         '</span>' +
-        '<span class="day-remove" onclick="removeItem(' + idx + ')" title="Remove">✕</span>';
-
+        '<span class="day-remove" onclick="removeItem(' + idx + ')">✕</span>';
       li.addEventListener('dragstart', function(e) {
         dragSrc = idx;
         setTimeout(function() { li.classList.add('dragging'); }, 0);
@@ -400,7 +426,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
       li.addEventListener('dragend', function() { li.classList.remove('dragging'); renderList(); });
       li.addEventListener('dragover', function(e) {
         e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
         ul.querySelectorAll('li').forEach(function(l) { l.classList.remove('drag-over'); });
         li.classList.add('drag-over');
       });
@@ -436,76 +461,17 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
     items = [];
     document.querySelectorAll('.add-day-btn.added, .add-day-btn-sm.added').forEach(function(btn) {
       btn.classList.remove('added');
-      btn.textContent = btn.classList.contains('add-day-btn-sm') ? '+' : '+ My Day';
+      btn.textContent = btn.classList.contains('add-day-btn-sm') ? '+' : '+ Day';
     });
     renderList();
   }
-
-  function escHtml(s) {
-    return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  }
-
-  function toggleCS() {
-    var body = document.getElementById('cs-body');
-    var btn  = document.getElementById('cs-btn');
-    var open = body.style.display === 'none';
-    body.style.display = open ? 'block' : 'none';
-    btn.querySelector('span').textContent = (open ? '▾ ' : '▸ ') + btn.querySelector('span').textContent.slice(2);
-    btn.querySelector('.cs-hint').textContent = open ? 'click to collapse' : 'click to expand';
-  }
-
-  function triggerRefresh() {
-    var btn = document.getElementById('refresh-btn');
-    if (btn.classList.contains('spinning')) return;
-    btn.classList.add('spinning');
-    btn.textContent = '↻ Refreshing…';
-
-    fetch(WORKER_URL + '/refresh', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({})
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      if (data.ok) {
-        btn.classList.remove('spinning');
-        btn.classList.add('done');
-        btn.textContent = '✓ Building… reload in ~30s';
-        setTimeout(function() {
-          btn.classList.remove('done');
-          btn.textContent = '↻ Refresh';
-        }, 35000);
-      } else {
-        btn.classList.remove('spinning');
-        btn.classList.add('error');
-        btn.textContent = '✗ Failed';
-        setTimeout(function() {
-          btn.classList.remove('error');
-          btn.textContent = '↻ Refresh';
-        }, 4000);
-      }
-    })
-    .catch(function() {
-      btn.classList.remove('spinning');
-      btn.classList.add('error');
-      btn.textContent = '✗ Failed';
-      setTimeout(function() {
-        btn.classList.remove('error');
-        btn.textContent = '↻ Refresh';
-      }, 4000);
-    });
-  }
-
-  var WORKER_URL = "https://notion-proxy.jgilbert82.workers.dev";
 
   function markDone(btn) {
     if (btn.classList.contains('saving')) return;
     var pageId = btn.getAttribute('data-page-id');
     var card   = btn.closest('.task-card, .task-row');
-
     btn.classList.add('saving');
     btn.textContent = btn.classList.contains('done-btn-sm') ? '…' : 'Saving…';
-
     fetch(WORKER_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -517,14 +483,52 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
         btn.textContent = btn.classList.contains('done-btn-sm') ? '✓' : '✓ Done';
         if (card) card.classList.add('done-fade');
       } else {
-        btn.textContent = 'Error';
-        btn.style.color = 'var(--accent)';
+        btn.textContent = 'Error'; btn.style.color = 'var(--accent)';
+      }
+    })
+    .catch(function() { btn.textContent = 'Error'; btn.style.color = 'var(--accent)'; });
+  }
+
+  function toggleCS() {
+    var body = document.getElementById('cs-body');
+    var btn  = document.getElementById('cs-btn');
+    var open = body.style.display === 'none';
+    body.style.display = open ? 'block' : 'none';
+    var span = btn.querySelector('span');
+    span.textContent = (open ? '▾ ' : '▸ ') + span.textContent.slice(2);
+    btn.querySelector('.cs-hint').textContent = open ? 'click to collapse' : 'click to expand';
+  }
+
+  function triggerRefresh() {
+    var btn = document.getElementById('refresh-btn');
+    if (btn.classList.contains('spinning')) return;
+    btn.classList.add('spinning');
+    btn.textContent = '↻ Refreshing…';
+    fetch(WORKER_URL + '/refresh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      btn.classList.remove('spinning');
+      if (data.ok) {
+        btn.classList.add('done');
+        btn.textContent = '✓ Building… reload in ~30s';
+        setTimeout(function() { btn.classList.remove('done'); btn.textContent = '↻ Refresh'; }, 35000);
+      } else {
+        btn.classList.add('error'); btn.textContent = '✗ Failed';
+        setTimeout(function() { btn.classList.remove('error'); btn.textContent = '↻ Refresh'; }, 4000);
       }
     })
     .catch(function() {
-      btn.textContent = 'Error';
-      btn.style.color = 'var(--accent)';
+      btn.classList.remove('spinning'); btn.classList.add('error'); btn.textContent = '✗ Failed';
+      setTimeout(function() { btn.classList.remove('error'); btn.textContent = '↻ Refresh'; }, 4000);
     });
+  }
+
+  function escHtml(s) {
+    return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
 </script>
 </body>
