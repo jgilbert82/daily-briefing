@@ -17,7 +17,7 @@ from googleapiclient.discovery import build
 # ── CONFIG ────────────────────────────────────────────────────────────────────
 
 NOTION_TASKS_DB    = "d5669af6-6732-432b-b1ac-558a860164ca"
-NOTION_EMAILS_DB   = "a34ff292-5e7c-4069-ba90-91de918e380f"
+NOTION_EMAILS_DB   = "73a4534d-e930-4331-89ef-664b11707ced"
 NOTION_CLIENTS_DB  = "81b6953304db4b76ba7a25a9704fe7b2"
 NOTION_VERSION     = "2022-06-28"
 WORKER_URL         = "https://notion-proxy.jgilbert82.workers.dev"
