@@ -1385,7 +1385,7 @@ if __name__ == "__main__":
     print(f"  Done ({len(summary)} chars)")
 
     print("\nBuilding HTML...")
-     html = build_html(overdue, today_tasks, waiting, this_week, later, summary,
+    html = build_html(overdue, today_tasks, waiting, this_week, later, summary,
                       work_days, family_events, emails, today_str, client_map)
 
     with open("index.html", "w", encoding="utf-8") as f:
