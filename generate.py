@@ -462,6 +462,18 @@ def render_task_card(t, today_str, compact=False):
     open_lnk = f'<a class="open-link" href="{esc(t["url"])}" target="_blank">↗</a>'
     done_btn = f'<button class="done-btn" onclick="markDone(this)" data-page-id="{page_id}">✓ Done</button>'
     add_btn  = f'<button class="add-day-btn" onclick="addToMyDay(this)" data-title="{esc(title)}" data-client="{esc(t["client"] or "")}">+ Day</button>'
+
+    edit_attrs = (
+        f'data-page-id="{page_id}"'
+        f' data-horizon="{esc(t["horizon"] or "")}"'
+        f' data-due="{t["due"] or ""}"'
+        f' data-client="{esc(t["client"] or "")}"'
+        f' data-status="{esc(t["status"] or "")}"'
+        f' data-priority="{esc(t["priority"] or "")}"'
+    )
+    edit_btn = f'<button class="edit-btn" onclick="openEditor(this)" {edit_attrs}>✎ Edit</button>'
+    edit_sm  = f'<button class="edit-btn edit-btn-sm" onclick="openEditor(this)" {edit_attrs}>✎</button>'
+
     due_b    = due_badge_html(t["due"], today_str)
     pri_d    = pri_dot_html(t["priority"])
     cli_b    = client_badge_html(t["client"])
@@ -478,13 +490,13 @@ def render_task_card(t, today_str, compact=False):
         return (
             f'<div class="task-row" data-page-id="{page_id}">'
             f'<div class="task-row-left">{pri_d}<span class="task-row-title">{esc(title)}</span></div>'
-            f'<div class="task-row-right">{due_b}{cli_b}{done_sm}{add_sm}{open_lnk}</div>'
+            f'<div class="task-row-right">{due_b}{cli_b}{done_sm}{add_sm}{edit_sm}{open_lnk}</div>'
             f'</div>'
         )
     return (
         f'<div class="task-card" data-page-id="{page_id}">'
         f'<div class="card-header"><div class="card-title">{pri_d} {esc(title)}</div>'
-        f'<div class="card-actions">{done_btn}{add_btn}{open_lnk}</div></div>'
+        f'<div class="card-actions">{done_btn}{add_btn}{edit_btn}{open_lnk}</div></div>'
         f'<div class="card-meta">{due_b}{cli_b}{wt_b}</div>'
         f'{ctx_html}'
         f'</div>'
@@ -678,11 +690,12 @@ def render_client_summary(tasks, today_str):
 # ── HTML BUILD ────────────────────────────────────────────────────────────────
 
 def build_html(overdue, today_tasks, waiting, this_week, later, summary,
-               work_days, family_events, emails, today_str):
+               work_days, family_events, emails, today_str, client_map):
     today_display  = datetime.strptime(today_str, "%Y-%m-%d").strftime("%A %-d %B %Y")
     generated_time = datetime.utcnow().strftime("%H:%M UTC")
     all_tasks      = overdue + today_tasks + waiting + this_week + later
     total          = len(all_tasks)
+    clients_json = json.dumps({name: pid for pid, name in client_map.items()})
 
     # Sections
     summary_html    = format_summary_html(summary)
@@ -832,6 +845,25 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
 .add-day-btn-sm{{font-size:.62rem;font-weight:700;color:var(--gold);border:1px solid var(--gold);background:rgba(176,138,32,.06);padding:1px 5px;cursor:pointer;transition:all .15s;line-height:1.4;}}
 .add-day-btn-sm:hover{{background:var(--gold);color:var(--ink);}}
 .add-day-btn-sm.added{{color:var(--muted);border-color:var(--border);background:transparent;}}
+/* ── TASK EDITOR ── */
+.edit-btn{{font-size:.52rem;letter-spacing:.8px;text-transform:uppercase;font-weight:600;color:var(--blue);border:1px solid var(--blue);background:rgba(37,99,235,.06);padding:2px 6px;cursor:pointer;transition:all .15s;white-space:nowrap;}}
+.edit-btn:hover{{background:var(--blue);color:white;}}
+.edit-btn.edited{{color:var(--green);border-color:var(--green);background:rgba(22,163,74,.06);}}
+.edit-btn-sm{{font-size:.62rem;letter-spacing:0;text-transform:none;padding:1px 5px;line-height:1.4;}}
+#task-editor{{position:absolute;z-index:300;width:288px;background:var(--card);border:1px solid var(--border);box-shadow:0 10px 28px rgba(26,26,46,.16);padding:14px;}}
+#task-editor .ed-title{{font-size:.55rem;letter-spacing:1.2px;text-transform:uppercase;font-weight:600;color:var(--muted);margin-bottom:10px;}}
+.ed-row{{display:flex;align-items:center;gap:8px;margin-bottom:8px;}}
+.ed-row label{{width:52px;flex-shrink:0;font-size:.55rem;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:600;}}
+.ed-row select,.ed-row input{{flex:1;min-width:0;font-family:'DM Sans',sans-serif;font-size:.72rem;padding:4px 6px;border:1px solid var(--border);background:var(--paper);color:var(--ink);border-radius:0;}}
+.ed-clear{{flex-shrink:0;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;padding:3px 7px;font-size:.62rem;}}
+.ed-clear:hover{{color:var(--accent);border-color:var(--accent);}}
+.ed-actions{{display:flex;align-items:center;gap:8px;margin-top:12px;}}
+#ed-msg{{margin-right:auto;font-size:.62rem;color:var(--green);}}
+#ed-msg.err{{color:var(--accent);}}
+.ed-save{{font-size:.52rem;letter-spacing:.8px;text-transform:uppercase;font-weight:600;color:white;border:1px solid var(--green);background:var(--green);padding:4px 12px;cursor:pointer;}}
+.ed-save:disabled{{opacity:.5;cursor:default;}}
+.ed-cancel{{font-size:.52rem;letter-spacing:.8px;text-transform:uppercase;font-weight:600;color:var(--muted);border:1px solid var(--border);background:transparent;padding:4px 10px;cursor:pointer;}}
+.ed-cancel:hover{{color:var(--ink);}}
 .task-card.done-fade,.task-row.done-fade{{opacity:0;transform:translateY(-3px);transition:all .5s ease;pointer-events:none;}}
 
 /* ── SIDEBAR: EMAIL TRIAGE ── */
@@ -997,10 +1029,160 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
   </div>
 </div>
 
+<div id="task-editor" style="display:none">
+  <div class="ed-title">Edit Task</div>
+  <div class="ed-row"><label>Horizon</label>
+    <select id="ed-horizon">
+      <option value="">— none —</option>
+      <option>🔴 Today</option>
+      <option>🟡 This Week</option>
+      <option>🔵 Next Week</option>
+      <option>⚪ Someday</option>
+    </select>
+  </div>
+  <div class="ed-row"><label>Due</label>
+    <input type="date" id="ed-due">
+    <button class="ed-clear" onclick="document.getElementById('ed-due').value=''" title="Clear date">✕</button>
+  </div>
+  <div class="ed-row"><label>Client</label>
+    <select id="ed-client"></select>
+  </div>
+  <div class="ed-row"><label>Status</label>
+    <select id="ed-status">
+      <option value="">— none —</option>
+      <option>Not Started</option>
+      <option>In Progress</option>
+      <option>Waiting</option>
+      <option>Done</option>
+    </select>
+  </div>
+  <div class="ed-row"><label>Priority</label>
+    <select id="ed-priority">
+      <option value="">— none —</option>
+      <option>High</option>
+      <option>Medium</option>
+      <option>Low</option>
+    </select>
+  </div>
+  <div class="ed-actions">
+    <span id="ed-msg"></span>
+    <button class="ed-cancel" onclick="closeEditor()">Cancel</button>
+    <button id="ed-save" class="ed-save" onclick="saveEdit()">Save</button>
+  </div>
+</div>
 <script>
   var WORKER_URL = "{WORKER_URL}";
   var items = [];
   var dragSrc = null;
+
+  // ── TASK EDITOR ──
+  var CLIENTS = {clients_json};   // client name -> Notion page id
+  var editTarget = null;
+
+  function openEditor(btn) {{
+    editTarget = btn;
+    var ed = document.getElementById('task-editor');
+
+    // Populate the client dropdown once
+    var cs = document.getElementById('ed-client');
+    if (!cs.options.length) {{
+      var none = document.createElement('option');
+      none.value = ''; none.textContent = '— none —';
+      cs.appendChild(none);
+      Object.keys(CLIENTS).sort().forEach(function(name) {{
+        var o = document.createElement('option');
+        o.value = name; o.textContent = name;
+        cs.appendChild(o);
+      }});
+    }}
+
+    document.getElementById('ed-horizon').value  = btn.getAttribute('data-horizon')  || '';
+    document.getElementById('ed-due').value      = btn.getAttribute('data-due')      || '';
+    cs.value                                     = btn.getAttribute('data-client')   || '';
+    document.getElementById('ed-status').value   = btn.getAttribute('data-status')   || '';
+    document.getElementById('ed-priority').value = btn.getAttribute('data-priority') || '';
+
+    var msg = document.getElementById('ed-msg');
+    msg.textContent = ''; msg.classList.remove('err');
+
+    // Position below the button, kept on-screen
+    var r = btn.getBoundingClientRect();
+    ed.style.display = 'block';
+    var left = Math.max(8, Math.min(r.left + window.scrollX, window.scrollX + window.innerWidth - 304));
+    ed.style.top  = (r.bottom + window.scrollY + 6) + 'px';
+    ed.style.left = left + 'px';
+  }}
+
+  function closeEditor() {{
+    document.getElementById('task-editor').style.display = 'none';
+    editTarget = null;
+  }}
+
+  // Close on click outside or Escape
+  document.addEventListener('click', function(e) {{
+    var ed = document.getElementById('task-editor');
+    if (ed.style.display === 'block' &&
+        !ed.contains(e.target) &&
+        !e.target.classList.contains('edit-btn')) {{
+      closeEditor();
+    }}
+  }});
+  document.addEventListener('keydown', function(e) {{
+    if (e.key === 'Escape') closeEditor();
+  }});
+
+  function saveEdit() {{
+    if (!editTarget) return;
+    var btnSave    = document.getElementById('ed-save');
+    var msg        = document.getElementById('ed-msg');
+    var horizon    = document.getElementById('ed-horizon').value;
+    var due        = document.getElementById('ed-due').value;
+    var clientName = document.getElementById('ed-client').value;
+    var status     = document.getElementById('ed-status').value;
+    var priority   = document.getElementById('ed-priority').value;
+
+    var props = {{
+      horizon:  horizon,
+      due:      due,
+      clientId: clientName ? (CLIENTS[clientName] || '') : '',
+      status:   status,
+      priority: priority
+    }};
+
+    btnSave.disabled = true; btnSave.textContent = 'Saving…';
+    fetch(WORKER_URL, {{
+      method: 'POST',
+      headers: {{ 'Content-Type': 'application/json' }},
+      body: JSON.stringify({{
+        pageId: editTarget.getAttribute('data-page-id'),
+        action: 'update',
+        props: props
+      }})
+    }})
+    .then(function(r) {{ return r.json(); }})
+    .then(function(data) {{
+      btnSave.disabled = false; btnSave.textContent = 'Save';
+      if (data.ok) {{
+        editTarget.setAttribute('data-horizon',  horizon);
+        editTarget.setAttribute('data-due',      due);
+        editTarget.setAttribute('data-client',   clientName);
+        editTarget.setAttribute('data-status',   status);
+        editTarget.setAttribute('data-priority', priority);
+        editTarget.classList.add('edited');
+        msg.classList.remove('err');
+        msg.textContent = '✓ Saved to Notion';
+        setTimeout(closeEditor, 900);
+      }} else {{
+        msg.classList.add('err');
+        msg.textContent = '✗ ' + (data.error || 'Failed');
+      }}
+    }})
+    .catch(function() {{
+      btnSave.disabled = false; btnSave.textContent = 'Save';
+      msg.classList.add('err');
+      msg.textContent = '✗ Network error';
+    }});
+  }}
 
   function togglePanel() {{
     var p = document.getElementById('my-day-panel');
@@ -1203,8 +1385,8 @@ if __name__ == "__main__":
     print(f"  Done ({len(summary)} chars)")
 
     print("\nBuilding HTML...")
-    html = build_html(overdue, today_tasks, waiting, this_week, later, summary,
-                      work_days, family_events, emails, today_str)
+     html = build_html(overdue, today_tasks, waiting, this_week, later, summary,
+                      work_days, family_events, emails, today_str, client_map)
 
     with open("index.html", "w", encoding="utf-8") as f:
         f.write(html)
