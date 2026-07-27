@@ -237,6 +237,7 @@ def is_done(props):
 def fetch_tasks(client_map):
     all_tasks = []
     seen = {}
+    skipped = 0
     cursor = None
     while True:
         body = {"page_size": 100}
@@ -256,9 +257,6 @@ def fetch_tasks(client_map):
             title = "".join(p.get("plain_text", "") for p in parts).strip()
             if not title:
                 continue
-            seen[title] = seen.get(title, 0) + 1
-            if seen[title] > 1:
-                continue
             status    = (props.get("Status", {}).get("select") or {}).get("name", "") or "Not Started"
             horizon   = (props.get("Horizon", {}).get("select") or {}).get("name", "") or ""
             priority  = (props.get("Priority", {}).get("select") or {}).get("name", "") or ""
@@ -266,6 +264,11 @@ def fetch_tasks(client_map):
             due_obj   = props.get("Due Date", {}).get("date") or {}
             due       = (due_obj.get("start") or "")[:10] or None
             client    = parse_client(props.get("Client", {}), client_map)
+            key       = (title, client)
+            seen[key] = seen.get(key, 0) + 1
+            if seen[key] > 1:
+                skipped += 1
+                continue
             msg       = "".join(p.get("plain_text","") for p in props.get("Message",{}).get("rich_text",[])).strip()
             notes     = "".join(p.get("plain_text","") for p in props.get("Notes",{}).get("rich_text",[])).strip()
             context   = (msg or notes or "")[:250] or None
@@ -278,7 +281,7 @@ def fetch_tasks(client_map):
         if not data.get("has_more"):
             break
         cursor = data["next_cursor"]
-    print(f"  {len(all_tasks)} active tasks fetched")
+    print(f"  {len(all_tasks)} active tasks fetched ({skipped} duplicates skipped)")
     return all_tasks
 
 def bucket_tasks(tasks, today_str):
@@ -462,6 +465,8 @@ def render_task_card(t, today_str, compact=False):
     open_lnk = f'<a class="open-link" href="{esc(t["url"])}" target="_blank">↗</a>'
     done_btn = f'<button class="done-btn" onclick="markDone(this)" data-page-id="{page_id}">✓ Done</button>'
     add_btn  = f'<button class="add-day-btn" onclick="addToMyDay(this)" data-title="{esc(title)}" data-client="{esc(t["client"] or "")}">+ Day</button>'
+    tmrw_btn = f'<button class="defer-btn" onclick="deferTask(this, \'tomorrow\')" data-page-id="{page_id}">⏭ Tmrw</button>'
+    week_btn = f'<button class="defer-btn" onclick="deferTask(this, \'nextweek\')" data-page-id="{page_id}">→ Wk</button>'
 
     edit_attrs = (
         f'data-page-id="{page_id}"'
@@ -487,16 +492,18 @@ def render_task_card(t, today_str, compact=False):
     if compact:
         done_sm = f'<button class="done-btn-sm" onclick="markDone(this)" data-page-id="{page_id}">✓</button>'
         add_sm  = f'<button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="{esc(title)}" data-client="{esc(t["client"] or "")}">+</button>'
+        tmrw_sm = f'<button class="defer-btn-sm" onclick="deferTask(this, \'tomorrow\')" data-page-id="{page_id}">⏭</button>'
+        week_sm = f'<button class="defer-btn-sm" onclick="deferTask(this, \'nextweek\')" data-page-id="{page_id}">→</button>'
         return (
             f'<div class="task-row" data-page-id="{page_id}">'
             f'<div class="task-row-left">{pri_d}<span class="task-row-title">{esc(title)}</span></div>'
-            f'<div class="task-row-right">{due_b}{cli_b}{done_sm}{add_sm}{edit_sm}{open_lnk}</div>'
+            f'<div class="task-row-right">{due_b}{cli_b}{done_sm}{tmrw_sm}{week_sm}{add_sm}{edit_sm}{open_lnk}</div>'
             f'</div>'
         )
     return (
         f'<div class="task-card" data-page-id="{page_id}">'
         f'<div class="card-header"><div class="card-title">{pri_d} {esc(title)}</div>'
-        f'<div class="card-actions">{done_btn}{add_btn}{edit_btn}{open_lnk}</div></div>'
+        f'<div class="card-actions">{done_btn}{tmrw_btn}{week_btn}{add_btn}{edit_btn}{open_lnk}</div></div>'
         f'<div class="card-meta">{due_b}{cli_b}{wt_b}</div>'
         f'{ctx_html}'
         f'</div>'
@@ -798,6 +805,12 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
 .done-btn-sm{{font-size:.62rem;font-weight:700;color:var(--green);border:1px solid var(--green);background:rgba(22,163,74,.06);padding:1px 5px;cursor:pointer;transition:all .15s;line-height:1.4;}}
 .done-btn-sm:hover{{background:var(--green);color:white;}}
 .done-btn-sm.saving{{color:var(--muted);border-color:var(--border);background:transparent;}}
+.defer-btn{{font-size:.52rem;letter-spacing:.8px;text-transform:uppercase;font-weight:600;color:var(--blue);border:1px solid var(--blue);background:rgba(37,99,235,.06);padding:2px 6px;cursor:pointer;transition:all .15s;white-space:nowrap;}}
+.defer-btn:hover{{background:var(--blue);color:white;}}
+.defer-btn.saving{{color:var(--muted);border-color:var(--border);background:transparent;cursor:default;}}
+.defer-btn-sm{{font-size:.62rem;font-weight:700;color:var(--blue);border:1px solid var(--blue);background:rgba(37,99,235,.06);padding:1px 5px;cursor:pointer;transition:all .15s;line-height:1.4;}}
+.defer-btn-sm:hover{{background:var(--blue);color:white;}}
+.defer-btn-sm.saving{{color:var(--muted);border-color:var(--border);background:transparent;}}
 .add-day-btn{{font-size:.52rem;letter-spacing:.8px;text-transform:uppercase;font-weight:600;color:var(--gold);border:1px solid var(--gold);background:rgba(176,138,32,.06);padding:2px 6px;cursor:pointer;transition:all .15s;white-space:nowrap;}}
 .add-day-btn:hover{{background:var(--gold);color:var(--ink);}}
 .add-day-btn.added{{color:var(--muted);border-color:var(--border);background:transparent;cursor:default;}}
@@ -1239,6 +1252,46 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
     .then(function(data) {{
       if (data.ok) {{
         btn.textContent = btn.classList.contains('done-btn-sm') ? '✓' : '✓ Done';
+        if (card) card.classList.add('done-fade');
+      }} else {{
+        btn.textContent = 'Error'; btn.style.color = 'var(--accent)';
+      }}
+    }})
+    .catch(function() {{ btn.textContent = 'Error'; btn.style.color = 'var(--accent)'; }});
+  }}
+
+  function deferTask(btn, mode) {{
+    if (btn.classList.contains('saving')) return;
+    var pageId = btn.getAttribute('data-page-id');
+    var card   = btn.closest('.task-card, .task-row');
+    var small  = btn.classList.contains('defer-btn-sm');
+    var label  = btn.textContent;
+
+    var d = new Date();
+    var horizon;
+    if (mode === 'tomorrow') {{
+      d.setDate(d.getDate() + 1);
+      if (d.getDay() === 6) d.setDate(d.getDate() + 2);
+      else if (d.getDay() === 0) d.setDate(d.getDate() + 1);
+      horizon = '🔴 Today';
+    }} else {{
+      d.setDate(d.getDate() + ((8 - d.getDay()) % 7 || 7));
+      horizon = '🔵 Next Week';
+    }}
+    var pad = function(n) {{ return (n < 10 ? '0' : '') + n; }};
+    var dueDate = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+
+    btn.classList.add('saving');
+    btn.textContent = small ? '…' : 'Saving…';
+    fetch(WORKER_URL, {{
+      method: 'POST',
+      headers: {{ 'Content-Type': 'application/json' }},
+      body: JSON.stringify({{ pageId: pageId, action: 'defer', dueDate: dueDate, horizon: horizon }})
+    }})
+    .then(function(r) {{ return r.json(); }})
+    .then(function(data) {{
+      if (data.ok) {{
+        btn.textContent = small ? '✓' : '✓ ' + label.slice(2);
         if (card) card.classList.add('done-fade');
       }} else {{
         btn.textContent = 'Error'; btn.style.color = 'var(--accent)';
