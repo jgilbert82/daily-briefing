@@ -562,46 +562,6 @@ def render_work_day_col(date_str, events, today_str):
     return f'<div class="day-col"><div class="{hdr_class}"><strong>{label}</strong><span>{sub}</span></div>{body}</div>'
 
 
-# ── EMAIL TRIAGE RENDER ───────────────────────────────────────────────────────
-
-def render_email_triage(emails):
-    if not emails:
-        return '<div class="no-emails">No recent emails in the last 5 days.</div>'
-
-    # Split: New (needs action) vs Recent (FYI)
-    new_emails    = [e for e in emails if e["is_new"]]
-    recent_emails = [e for e in emails if not e["is_new"]][:10]
-
-    def email_row(e):
-        col     = client_colour(e["client"])
-        cli_b   = client_badge_html(e["client"], small=True) if e["client"] else ""
-        new_dot = '<span class="new-dot">NEW</span>' if e["is_new"] else ""
-        recv    = fmt_date(e["received"]) if e["received"] else ""
-        preview = e["message"][:120] + "…" if len(e["message"]) > 120 else e["message"]
-        return (
-            f'<div class="email-row">'
-            f'<div class="email-main">'
-            f'<div class="email-header">'
-            f'<span class="email-sender">{esc(e["sender"])}</span>'
-            f'{new_dot}{cli_b}'
-            f'<span class="email-date">{recv}</span>'
-            f'</div>'
-            f'<div class="email-subject"><a href="{esc(e["url"])}" target="_blank">{esc(e["subject"])}</a></div>'
-            f'{"<div class=email-preview>" + esc(preview) + "</div>" if preview else ""}'
-            f'</div>'
-            f'</div>'
-        )
-
-    html = ""
-    if new_emails:
-        html += '<div class="email-group-label">⚡ Needs Action</div>'
-        html += "".join(email_row(e) for e in new_emails)
-    if recent_emails:
-        html += '<div class="email-group-label">📬 Recent</div>'
-        html += "".join(email_row(e) for e in recent_emails)
-    return html
-
-
 # ── FAMILY PANEL RENDER ───────────────────────────────────────────────────────
 
 def render_family_panel(family_events, today_str):
@@ -709,7 +669,6 @@ def build_html(overdue, today_tasks, waiting, this_week, later, summary,
         events = work_days.get(d, [])
         day_cols += render_work_day_col(d, events, today_str)
 
-    email_html  = render_email_triage(emails)
     family_html = render_family_panel(family_events, today_str)
 
     task_today_html    = render_task_section("Today",      "⚡", today_tasks, today_str, compact=False, colour="#b08a20")
@@ -866,23 +825,10 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
 .ed-cancel:hover{{color:var(--ink);}}
 .task-card.done-fade,.task-row.done-fade{{opacity:0;transform:translateY(-3px);transition:all .5s ease;pointer-events:none;}}
 
-/* ── SIDEBAR: EMAIL TRIAGE ── */
+/* ── SIDEBAR ── */
 .sidebar-section{{margin-bottom:24px;}}
 .sidebar-title{{font-size:.58rem;letter-spacing:3px;text-transform:uppercase;font-weight:700;border-bottom:2px solid var(--ink);padding-bottom:7px;margin-bottom:12px;display:flex;align-items:baseline;justify-content:space-between;}}
 .sidebar-title .stcount{{font-family:'Playfair Display',serif;font-size:.75rem;color:var(--muted);font-weight:400;}}
-.email-group-label{{font-size:.54rem;letter-spacing:1.5px;text-transform:uppercase;font-weight:600;color:var(--muted);padding:8px 0 4px;border-bottom:1px dashed var(--border);margin-bottom:6px;}}
-.email-group-label:first-child{{padding-top:0;}}
-.email-row{{padding:8px 0;border-bottom:1px solid var(--border);}}
-.email-row:last-child{{border-bottom:none;}}
-.email-header{{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-bottom:3px;}}
-.email-sender{{font-size:.68rem;font-weight:600;color:var(--ink);}}
-.email-date{{font-size:.58rem;color:var(--muted);margin-left:auto;}}
-.new-dot{{font-size:.5rem;letter-spacing:1px;text-transform:uppercase;font-weight:700;color:white;background:var(--accent);padding:1px 5px;border-radius:2px;}}
-.email-subject{{font-size:.72rem;font-weight:500;line-height:1.35;margin-bottom:3px;}}
-.email-subject a{{color:var(--ink);text-decoration:none;}}
-.email-subject a:hover{{color:var(--accent);}}
-.email-preview{{font-size:.65rem;color:var(--muted);line-height:1.45;}}
-.no-emails{{font-size:.72rem;color:var(--muted);font-style:italic;padding:8px 0;}}
 
 /* ── SIDEBAR: FAMILY ── */
 .fam-row{{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--border);}}
@@ -987,15 +933,6 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
   </div>
 
   <div class="dash-sidebar">
-
-    <!-- Email Triage -->
-    <div class="sidebar-section">
-      <div class="sidebar-title">
-        <span>📧 Email Triage</span>
-        <span class="stcount">{new_email_count} new</span>
-      </div>
-      {email_html}
-    </div>
 
     <!-- Family Calendar -->
     <div class="sidebar-section">

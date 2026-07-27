@@ -144,23 +144,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
 .ed-cancel:hover{color:var(--ink);}
 .task-card.done-fade,.task-row.done-fade{opacity:0;transform:translateY(-3px);transition:all .5s ease;pointer-events:none;}
 
-/* ── SIDEBAR: EMAIL TRIAGE ── */
+/* ── SIDEBAR ── */
 .sidebar-section{margin-bottom:24px;}
 .sidebar-title{font-size:.58rem;letter-spacing:3px;text-transform:uppercase;font-weight:700;border-bottom:2px solid var(--ink);padding-bottom:7px;margin-bottom:12px;display:flex;align-items:baseline;justify-content:space-between;}
 .sidebar-title .stcount{font-family:'Playfair Display',serif;font-size:.75rem;color:var(--muted);font-weight:400;}
-.email-group-label{font-size:.54rem;letter-spacing:1.5px;text-transform:uppercase;font-weight:600;color:var(--muted);padding:8px 0 4px;border-bottom:1px dashed var(--border);margin-bottom:6px;}
-.email-group-label:first-child{padding-top:0;}
-.email-row{padding:8px 0;border-bottom:1px solid var(--border);}
-.email-row:last-child{border-bottom:none;}
-.email-header{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-bottom:3px;}
-.email-sender{font-size:.68rem;font-weight:600;color:var(--ink);}
-.email-date{font-size:.58rem;color:var(--muted);margin-left:auto;}
-.new-dot{font-size:.5rem;letter-spacing:1px;text-transform:uppercase;font-weight:700;color:white;background:var(--accent);padding:1px 5px;border-radius:2px;}
-.email-subject{font-size:.72rem;font-weight:500;line-height:1.35;margin-bottom:3px;}
-.email-subject a{color:var(--ink);text-decoration:none;}
-.email-subject a:hover{color:var(--accent);}
-.email-preview{font-size:.65rem;color:var(--muted);line-height:1.45;}
-.no-emails{font-size:.72rem;color:var(--muted);font-style:italic;padding:8px 0;}
 
 /* ── SIDEBAR: FAMILY ── */
 .fam-row{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--border);}
@@ -352,15 +339,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
   </div>
 
   <div class="dash-sidebar">
-
-    <!-- Email Triage -->
-    <div class="sidebar-section">
-      <div class="sidebar-title">
-        <span>📧 Email Triage</span>
-        <span class="stcount">0 new</span>
-      </div>
-      <div class="no-emails">No recent emails in the last 5 days.</div>
-    </div>
 
     <!-- Family Calendar -->
     <div class="sidebar-section">
