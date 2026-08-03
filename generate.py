@@ -6,6 +6,7 @@ Writes index.html to GitHub Pages
 
 import os
 import re
+import time
 import json
 import requests
 from datetime import date, datetime, timedelta, timezone
@@ -402,23 +403,43 @@ def generate_summary(overdue, today_tasks, waiting, this_week, work_days, emails
 
     task_text = "\n\n".join(sections) or "No active tasks."
 
-    msg = client.messages.create(
-        model="claude-opus-4-5",
-        max_tokens=450,
-        system=(
-            f"You are a sharp executive assistant briefing Joseph, Senior Property Manager "
-            f"at CBRE Copenhagen. Clients: AEW (Sydmarken & Kystvejen), SSCP, Ingka/Hedeland, "
-            f"Mileway, AXA Nordic, Arrow Capital, EQT, M&G. Today is {today_display}.\n\n"
-            f"Write a tight morning briefing with EXACTLY these 3 section headings on their own line:\n"
-            f"MUST DO TODAY\n"
-            f"WATCH / CHASING\n"
-            f"THIS WEEK\n\n"
-            f"Be SPECIFIC — name actual tasks, meetings, and emails. Reference today's meetings where tasks link. "
-            f"2-3 sentences per section. No bullets. Plain prose."
-        ),
-        messages=[{"role": "user", "content": task_text}],
+    system_prompt = (
+        f"You are a sharp executive assistant briefing Joseph, Senior Property Manager "
+        f"at CBRE Copenhagen. Clients: AEW (Sydmarken & Kystvejen), SSCP, Ingka/Hedeland, "
+        f"Mileway, AXA Nordic, Arrow Capital, EQT, M&G. Today is {today_display}.\n\n"
+        f"Write a tight morning briefing with EXACTLY these 3 section headings on their own line:\n"
+        f"MUST DO TODAY\n"
+        f"WATCH / CHASING\n"
+        f"THIS WEEK\n\n"
+        f"Be SPECIFIC — name actual tasks, meetings, and emails. Reference today's meetings where tasks link. "
+        f"2-3 sentences per section. No bullets. Plain prose."
     )
-    return msg.content[0].text.strip()
+
+    for attempt in range(4):
+        try:
+            msg = client.messages.create(
+                model="claude-opus-4-5",
+                max_tokens=450,
+                system=system_prompt,
+                messages=[{"role": "user", "content": task_text}],
+            )
+            return msg.content[0].text.strip()
+        except (anthropic.APIStatusError, anthropic.APIConnectionError) as e:
+            wait = 5 * (2 ** attempt)
+            print(f"  Claude API error ({type(e).__name__}), attempt {attempt + 1}/4 — retrying in {wait}s")
+            if attempt < 3:
+                time.sleep(wait)
+
+    print("  Claude API unavailable — publishing without AI briefing")
+    return (
+        "MUST DO TODAY\n"
+        f"AI briefing unavailable this morning (Claude API error). "
+        f"{len(overdue)} overdue, {len(today_tasks)} due today — work the sections below.\n"
+        "WATCH / CHASING\n"
+        f"{len(waiting)} items waiting on someone else.\n"
+        "THIS WEEK\n"
+        f"{len(this_week)} tasks flagged for this week."
+    )
 
 
 # ── RENDER HELPERS ────────────────────────────────────────────────────────────
