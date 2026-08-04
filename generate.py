@@ -9,6 +9,7 @@ import re
 import time
 import json
 import requests
+import xml.etree.ElementTree as ET
 from datetime import date, datetime, timedelta, timezone
 import anthropic
 from google.oauth2.credentials import Credentials
@@ -34,6 +35,17 @@ CLIENT_COLOURS = {
     "Arrow": "#dc2626", "EQT": "#be185d", "M&G": "#065f46",
     "BNPP": "#1d4ed8", "CBRE Internal": "#64748b",
 }
+
+NEWS_FEEDS = [
+    ("BBC UK", "https://feeds.bbci.co.uk/news/uk/rss.xml"),
+]
+FINANCE_FEEDS = [
+    ("BBC Business", "https://feeds.bbci.co.uk/news/business/rss.xml"),
+    ("Guardian Business", "https://www.theguardian.com/uk/business/rss"),
+]
+PALACE_FEEDS = [
+    ("BBC Sport", "https://feeds.bbci.co.uk/sport/football/teams/crystal-palace/rss.xml"),
+]
 
 COPENHAGEN = timezone(timedelta(hours=2))  # CEST summer
 
@@ -369,6 +381,33 @@ def fetch_emails(days_back=5):
     return emails
 
 
+# ── NEWS HEADLINES ────────────────────────────────────────────────────────────
+
+def fetch_headlines(feeds, per_feed=4):
+    """Fetch RSS headlines. Returns list of {source, title, url}."""
+    items = []
+    for source, url in feeds:
+        try:
+            resp = requests.get(url, timeout=10,
+                                headers={"User-Agent": "daily-briefing/1.0"})
+            resp.raise_for_status()
+            root = ET.fromstring(resp.content)
+            count = 0
+            for item in root.iter("item"):
+                title = (item.findtext("title") or "").strip()
+                link  = (item.findtext("link") or "").strip()
+                if not title or not link:
+                    continue
+                items.append({"source": source, "title": title, "url": link})
+                count += 1
+                if count >= per_feed:
+                    break
+            print(f"  {source}: {count} headlines")
+        except Exception as e:
+            print(f"  {source}: FAILED ({e})")  # never kill the build over news
+    return items
+
+
 # ── AI SUMMARY ────────────────────────────────────────────────────────────────
 
 def generate_summary(overdue, today_tasks, waiting, this_week, work_days, emails, today_str):
@@ -624,6 +663,23 @@ def render_family_panel(family_events, today_str):
     return rows
 
 
+# ── NEWS PANEL RENDER ─────────────────────────────────────────────────────────
+
+def render_news_panel(title, icon, items):
+    if not items:
+        return ""
+    rows = "".join(
+        f'<a class="news-row" href="{esc(it["url"])}" target="_blank" rel="noopener">'
+        f'<span class="news-src">{esc(it["source"])}</span>'
+        f'<span class="news-title">{esc(it["title"])}</span></a>'
+        for it in items
+    )
+    return f'''<div class="sidebar-section">
+  <div class="sidebar-title"><span>{icon} {title}</span></div>
+  <div class="news-list">{rows}</div>
+</div>'''
+
+
 # ── CLIENT SUMMARY ────────────────────────────────────────────────────────────
 
 def render_client_summary(tasks, today_str):
@@ -678,7 +734,8 @@ def render_client_summary(tasks, today_str):
 # ── HTML BUILD ────────────────────────────────────────────────────────────────
 
 def build_html(overdue, today_tasks, waiting, this_week, later, summary,
-               work_days, family_events, emails, today_str, client_map):
+               work_days, family_events, emails, today_str, client_map,
+               news_items, finance_items, palace_items):
     today_display  = datetime.strptime(today_str, "%Y-%m-%d").strftime("%A %-d %B %Y")
     generated_time = datetime.utcnow().strftime("%H:%M UTC")
     all_tasks      = overdue + today_tasks + waiting + this_week + later
@@ -697,7 +754,10 @@ def build_html(overdue, today_tasks, waiting, this_week, later, summary,
         events = work_days.get(d, [])
         day_cols += render_work_day_col(d, events, today_str)
 
-    family_html = render_family_panel(family_events, today_str)
+    family_html  = render_family_panel(family_events, today_str)
+    news_html    = render_news_panel("UK Headlines", "📰", news_items)
+    finance_html = render_news_panel("Property & Finance", "📈", finance_items)
+    palace_html  = render_news_panel("Crystal Palace", "🦅", palace_items)
 
     task_today_html    = render_task_section("Today",      "⚡", today_tasks, today_str, compact=False, colour="#b08a20")
     task_overdue_html  = render_task_section("Overdue",    "🔴", overdue,     today_str, compact=False, colour="#c8502a")
@@ -872,6 +932,14 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
 .fam-pill{{font-size:.7rem;color:var(--ink);line-height:1.35;}}
 .no-family{{font-size:.72rem;color:var(--muted);font-style:italic;padding:8px 0;}}
 
+/* ── SIDEBAR: NEWS ── */
+.news-list{{display:flex;flex-direction:column;}}
+.news-row{{display:block;padding:7px 0;border-bottom:1px solid var(--border);text-decoration:none;transition:opacity .15s;}}
+.news-row:last-child{{border-bottom:none;}}
+.news-row:hover .news-title{{color:var(--accent);}}
+.news-src{{display:block;font-size:.52rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:1px;}}
+.news-title{{display:block;font-size:.74rem;line-height:1.4;color:var(--ink);transition:color .15s;}}
+
 /* ── MY DAY PANEL ── */
 #my-day-panel{{position:fixed;bottom:20px;right:20px;width:320px;background:var(--ink);color:var(--paper);border-radius:4px;box-shadow:0 8px 32px rgba(0,0,0,.35);z-index:1000;transition:all .2s ease;font-family:'DM Sans',sans-serif;}}
 #my-day-panel.collapsed{{width:150px;}}
@@ -976,6 +1044,11 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
       </div>
       {family_html}
     </div>
+
+    <!-- News -->
+    {news_html}
+    {finance_html}
+    {palace_html}
 
   </div>
 </div>
@@ -1391,13 +1464,19 @@ if __name__ == "__main__":
     print("\nFetching emails...")
     emails = fetch_emails(days_back=5)
 
+    print("\nFetching headlines...")
+    news_items    = fetch_headlines(NEWS_FEEDS, per_feed=5)
+    finance_items = fetch_headlines(FINANCE_FEEDS, per_feed=3)
+    palace_items  = fetch_headlines(PALACE_FEEDS, per_feed=4)
+
     print("\nGenerating AI summary...")
     summary = generate_summary(overdue, today_tasks, waiting, this_week, work_days, emails, today_str)
     print(f"  Done ({len(summary)} chars)")
 
     print("\nBuilding HTML...")
     html = build_html(overdue, today_tasks, waiting, this_week, later, summary,
-                      work_days, family_events, emails, today_str, client_map)
+                      work_days, family_events, emails, today_str, client_map,
+                      news_items, finance_items, palace_items)
 
     with open("index.html", "w", encoding="utf-8") as f:
         f.write(html)
