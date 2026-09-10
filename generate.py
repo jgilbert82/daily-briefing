@@ -1,6 +1,6 @@
 """
 generate.py — Daily Dashboard
-Pulls from: Notion (tasks + emails), Google Calendar (work + family), Claude AI
+Pulls from: Airtable (tasks + portfolio registers), Google Calendar (work + family), Claude AI
 Writes index.html to GitHub Pages
 """
 
@@ -18,22 +18,38 @@ from googleapiclient.discovery import build
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
 
-NOTION_TASKS_DB    = "d5669af6-6732-432b-b1ac-558a860164ca"
-NOTION_EMAILS_DB   = "73a4534d-e930-4331-89ef-664b11707ced"
-NOTION_CLIENTS_DB  = "81b6953304db4b76ba7a25a9704fe7b2"
-NOTION_VERSION     = "2022-06-28"
+AIRTABLE_BASE      = "app8HGKiLT6cY5zZi"          # Task Management HQ
+AT_TASKS           = "tblIGUa96EX3BtcP7"
+AT_CLIENTS         = "tblHl91zUnvrV1hGn"
+AT_DELIVERABLES    = "tblumdWwH0248wpx6"
+AT_LEASE_EVENTS    = "tblA8HnEJzvhLj8Ca"
+AT_COMPLIANCE      = "tblKQ6qLAqMt2TBEE"
+AT_ISSUES          = "tblndSPlPbLDTrGCq"
+AT_ARREARS         = "tblm5HhZdjVdlCZCx"
+AT_PROPERTIES      = "tblMTx3MuKFL0HvJ1"
+AIRTABLE_API       = "https://api.airtable.com/v0"
 WORKER_URL         = "https://notion-proxy.jgilbert82.workers.dev"
+
+# How far ahead the portfolio registers look
+LEASE_HORIZON_DAYS      = 120
+COMPLIANCE_HORIZON_DAYS = 90
+ARREARS_TOP_N           = 10
 
 WORK_CAL_ID        = "86iqekmmn19f3b7j1r9ihepkt9ethdtc@import.calendar.google.com"
 FAMILY_CAL_ID      = "family11040178401192019419@group.calendar.google.com"
 TANIA_CAL_ID       = "tania.andreasen80@gmail.com"
 PERSONAL_CAL_ID    = "jgilbert82@gmail.com"
 
+# Matched as a case-insensitive substring of the client name, first hit wins —
+# so longer / more specific keys must come before shorter ones.
 CLIENT_COLOURS = {
-    "AEW": "#2563eb", "SSCP": "#16a34a", "Ingka": "#d97706",
-    "Hedeland": "#d97706", "Mileway": "#7c3aed", "AXA": "#0891b2",
-    "Arrow": "#dc2626", "EQT": "#be185d", "M&G": "#065f46",
-    "BNPP": "#1d4ed8", "CBRE Internal": "#64748b",
+    "AEW Sydmarken": "#2563eb", "AEW Kystvejen": "#3b82f6", "AEW": "#2563eb",
+    "BNP Paribas": "#1d4ed8", "BNPP": "#1d4ed8", "AXA": "#0891b2",
+    "SSCP": "#16a34a", "Ingka": "#d97706", "Hedeland": "#d97706",
+    "Mileway": "#7c3aed", "Arrow": "#dc2626", "EQT": "#be185d",
+    "M&G": "#065f46", "Vestas": "#0f766e", "Manova": "#a855f7",
+    "Savills": "#0369a1", "Verdion": "#4d7c0f", "BMO": "#1e40af",
+    "CBRE IM": "#3b82f6", "CBRE Internal": "#64748b", "Personal": "#94a3b8",
 }
 
 NEWS_FEEDS = [
@@ -49,15 +65,88 @@ PALACE_FEEDS = [
 
 COPENHAGEN = timezone(timedelta(hours=2))  # CEST summer
 
+# Airtable record-id -> display-name, populated by build_link_lookup() at startup
+LINK_NAMES = {}
+
 
 # ── HELPERS ───────────────────────────────────────────────────────────────────
 
-def notion_headers():
+def airtable_headers():
     return {
-        "Authorization": f"Bearer {os.environ['NOTION_API_KEY']}",
+        "Authorization": f"Bearer {os.environ['AIRTABLE_API_KEY']}",
         "Content-Type": "application/json",
-        "Notion-Version": NOTION_VERSION,
     }
+
+def at_fetch_all(table_id, fields=None, page_size=100):
+    """GET every record from an Airtable table, following pagination.
+
+    Returns a list of {"id": rec..., "fields": {...}}. Airtable omits empty
+    fields entirely, so always read through .get() with a default.
+    """
+    records = []
+    offset  = None
+    while True:
+        params = {"pageSize": page_size}
+        if fields:
+            params["fields[]"] = fields
+        if offset:
+            params["offset"] = offset
+        resp = requests.get(
+            f"{AIRTABLE_API}/{AIRTABLE_BASE}/{table_id}",
+            headers=airtable_headers(), params=params, timeout=30,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        records.extend(data.get("records", []))
+        offset = data.get("offset")
+        if not offset:
+            break
+    return records
+
+def link_name(value, lookup=None):
+    """First name behind a multipleRecordLinks field.
+
+    The Airtable REST API returns linked records as bare record IDs
+    (["recXXXX"]), unlike the MCP tools which enrich them with names — so we
+    resolve them against a locally built id -> name map. LINK_NAMES is that map,
+    populated once at startup by build_link_lookup().
+    """
+    if not isinstance(value, list) or not value:
+        return ""
+    first = value[0]
+    if isinstance(first, dict):                       # defensive: enriched shape
+        return first.get("name") or ""
+    return (lookup or LINK_NAMES).get(first, "")
+
+def norm_horizon(h):
+    """Strip the emoji prefix so '🟡 This Week' and 'This Week' bucket alike."""
+    return re.sub(r'^[^\w]+', '', (h or "").strip()).strip()
+
+def fmt_dkk(n):
+    """Compact DKK for the stats bar and register rows."""
+    try:
+        n = float(n)
+    except (TypeError, ValueError):
+        return "—"
+    if abs(n) >= 1_000_000:
+        return f"{n/1_000_000:.1f}M"
+    if abs(n) >= 1_000:
+        return f"{n/1_000:.0f}k"
+    return f"{n:.0f}"
+
+def days_badge_html(days):
+    """Colour a days-remaining number: past, imminent, comfortable."""
+    if days is None:
+        return ""
+    try:
+        d = int(days)
+    except (TypeError, ValueError):
+        return ""
+    if d < 0:
+        return f'<span class="badge overdue">{abs(d)}d ago</span>'
+    if d <= 14:
+        return f'<span class="badge today">{d}d</span>'
+    return f'<span class="badge upcoming">{d}d</span>'
 
 def esc(s):
     return (s or "").replace("&","&amp;").replace("<","&lt;").replace(">","&gt;").replace('"',"&quot;")
@@ -199,115 +288,104 @@ def fetch_all_calendar_data(today_str):
         return {}, []
 
 
-# ── NOTION CLIENT MAP ─────────────────────────────────────────────────────────
+# ── AIRTABLE CLIENTS ──────────────────────────────────────────────────────────
 
-def build_client_map():
-    client_map = {}
-    cursor = None
-    while True:
-        body = {"page_size": 100}
-        if cursor:
-            body["start_cursor"] = cursor
-        resp = requests.post(
-            f"https://api.notion.com/v1/databases/{NOTION_CLIENTS_DB}/query",
-            headers=notion_headers(), json=body,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        for page in data["results"]:
-            pid   = page["id"]
-            props = page["properties"]
-            parts = (
-                props.get("Client", {}).get("title", [])
-                or props.get("Name", {}).get("title", [])
-            )
-            name = "".join(p.get("plain_text", "") for p in parts).strip()
-            if name:
-                client_map[pid] = name
-                client_map[pid.replace("-", "")] = name
-    
-        if not data.get("has_more"):
-            break
-        cursor = data["next_cursor"]
-    print(f"  Client map: {len(client_map)//2} clients")
-    return client_map
+def build_link_lookup():
+    """Build the record-id -> display-name map used to resolve linked fields.
+
+    Returns (client_names, lookup). client_names feeds the editor dropdown;
+    lookup covers Clients and Properties, which is every link the registers read.
+    """
+    global LINK_NAMES
+    lookup = {}
+    names  = []
+
+    for rec in at_fetch_all(AT_CLIENTS, fields=["Client Name"]):
+        name = (rec.get("fields", {}).get("Client Name") or "").strip()
+        if name:
+            lookup[rec["id"]] = name
+            names.append(name)
+
+    for rec in at_fetch_all(AT_PROPERTIES, fields=["Property"]):
+        prop = (rec.get("fields", {}).get("Property") or "").strip()
+        if prop:
+            lookup[rec["id"]] = prop
+
+    LINK_NAMES = lookup
+    names = sorted(set(names))
+    print(f"  {len(names)} clients, {len(lookup)} linkable records")
+    return names, lookup
 
 
-# ── NOTION TASKS ──────────────────────────────────────────────────────────────
+# ── AIRTABLE TASKS ────────────────────────────────────────────────────────────
 
-def parse_client(prop, client_map):
-    rels = prop.get("relation", [])
-    if not rels:
-        return None
-    pid = rels[0].get("id", "")
-    return client_map.get(pid) or client_map.get(pid.replace("-", ""))
+def fetch_tasks():
+    """Open tasks from the Airtable Tasks table.
 
-def is_done(props):
-    if (props.get("Status", {}).get("select") or {}).get("name") == "Done":
-        return True
-    return bool(props.get("Done", {}).get("checkbox", False))
-
-def fetch_tasks(client_map):
+    Emails land here too (Source = Email, written by TaskRobin), so an email is
+    just a task that happens to carry a Sender. There is no separate email
+    database any more.
+    """
     all_tasks = []
-    seen = {}
-    skipped = 0
-    cursor = None
-    while True:
-        body = {"page_size": 100}
-        if cursor:
-            body["start_cursor"] = cursor
-        resp = requests.post(
-            f"https://api.notion.com/v1/databases/{NOTION_TASKS_DB}/query",
-            headers=notion_headers(), json=body,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        for page in data["results"]:
-            props = page["properties"]
-            if is_done(props):
-                continue
-            parts = props.get("Task", {}).get("title", [])
-            title = "".join(p.get("plain_text", "") for p in parts).strip()
-            if not title:
-                continue
-            status    = (props.get("Status", {}).get("select") or {}).get("name", "") or "Not Started"
-            horizon   = (props.get("Horizon", {}).get("select") or {}).get("name", "") or ""
-            priority  = (props.get("Priority", {}).get("select") or {}).get("name", "") or ""
-            work_type = (props.get("Work Type", {}).get("select") or {}).get("name", "") or ""
-            due_obj   = props.get("Due Date", {}).get("date") or {}
-            due       = (due_obj.get("start") or "")[:10] or None
-            client    = parse_client(props.get("Client", {}), client_map)
-            key       = (title, client)
-            seen[key] = seen.get(key, 0) + 1
-            if seen[key] > 1:
-                skipped += 1
-                continue
-            msg       = "".join(p.get("plain_text","") for p in props.get("Message",{}).get("rich_text",[])).strip()
-            notes     = "".join(p.get("plain_text","") for p in props.get("Notes",{}).get("rich_text",[])).strip()
-            context   = (msg or notes or "")[:250] or None
-            all_tasks.append({
-                "title": title, "status": status, "horizon": horizon,
-                "due": due, "priority": priority, "work_type": work_type,
-                "client": client, "context": context,
-                "id": page["id"], "url": page["url"],
-            })
-        if not data.get("has_more"):
-            break
-        cursor = data["next_cursor"]
+    seen      = {}
+    skipped   = 0
+    for rec in at_fetch_all(AT_TASKS):
+        f = rec.get("fields", {})
+        status = f.get("Status") or "Not Started"
+        if status == "Done":
+            continue
+        title = (f.get("Task") or "").strip()
+        if not title:
+            continue
+
+        client    = f.get("Client") or None
+        horizon   = f.get("Horizon") or ""
+        priority  = f.get("Priority") or ""
+        work_type = f.get("Work Type") or ""
+        source    = f.get("Source") or ""
+        sender    = f.get("Sender") or ""
+        due       = (f.get("Due Date") or "")[:10] or None
+
+        # Template tasks ("Approve invoices") repeat — key on (title, client).
+        key = (title, client)
+        seen[key] = seen.get(key, 0) + 1
+        if seen[key] > 1:
+            skipped += 1
+            continue
+
+        msg     = (f.get("Message") or "").strip()
+        notes   = (f.get("Notes") or "").strip()
+        context = (notes or msg or "")[:250] or None
+
+        all_tasks.append({
+            "title": title, "status": status, "horizon": horizon,
+            "due": due, "priority": priority, "work_type": work_type,
+            "client": client, "context": context,
+            "source": source, "sender": sender,
+            "id": rec["id"],
+            "url": f"https://airtable.com/{AIRTABLE_BASE}/{AT_TASKS}/{rec['id']}",
+        })
     print(f"  {len(all_tasks)} active tasks fetched ({skipped} duplicates skipped)")
     return all_tasks
 
+
 def bucket_tasks(tasks, today_str):
+    """Split tasks into the five dashboard buckets.
+
+    Horizon is compared after stripping the emoji prefix, because the Airtable
+    field currently carries both '🟡 This Week' and a plain 'This Week' option.
+    """
     overdue, today_tasks, waiting, this_week, later = [], [], [], [], []
     for t in tasks:
         if t["status"] == "Waiting":
             waiting.append(t); continue
-        due, horizon = t["due"], t["horizon"]
+        due     = t["due"]
+        horizon = norm_horizon(t["horizon"])
         if due and due < today_str:
             overdue.append(t)
-        elif horizon == "🔴 Today" or due == today_str:
+        elif horizon == "Today" or due == today_str:
             today_tasks.append(t)
-        elif horizon == "🟡 This Week":
+        elif horizon == "This Week":
             this_week.append(t)
         else:
             later.append(t)
@@ -316,69 +394,195 @@ def bucket_tasks(tasks, today_str):
         p = {"High": 0, "Medium": 1, "Low": 2}.get(t["priority"], 3)
         return (p, t["due"] or "9999")
 
-    for b in [overdue, today_tasks, waiting, this_week, later]:
+    # Overdue reads oldest-first: the thing rotting longest goes at the top.
+    overdue.sort(key=lambda t: (t["due"] or "9999", {"High": 0, "Medium": 1, "Low": 2}.get(t["priority"], 3)))
+    for b in [today_tasks, waiting, this_week, later]:
         b.sort(key=sk)
     return overdue, today_tasks, waiting, this_week, later
 
 
-# ── NOTION EMAILS ─────────────────────────────────────────────────────────────
+# ── AIRTABLE PORTFOLIO REGISTERS ──────────────────────────────────────────────
+#
+# Each of these returns a list of plain dicts shaped for render_register_section:
+#   {title, client, meta, days, rag, url}
+# Sorting and windowing happen here in Python — the tables are small enough that
+# pulling everything and filtering locally beats wrestling with filterByFormula.
 
-def fetch_emails(days_back=5):
-    """Fetch recent emails from Notion Meeting Notes DB (via TaskRobin)."""
-    cutoff = (date.today() - timedelta(days=days_back)).isoformat()
-    emails = []
-    cursor = None
-    while True:
-        body = {
-            "page_size": 50,
-            "filter": {
-                "and": [
-                    {"property": "Sender", "email": {"is_not_empty": True}},
-                    {"property": "Received On", "date": {"on_or_after": cutoff}},
-                ]
-            },
-            "sorts": [{"property": "Received On", "direction": "descending"}],
-        }
-        if cursor:
-            body["start_cursor"] = cursor
-        resp = requests.post(
-            f"https://api.notion.com/v1/databases/{NOTION_EMAILS_DB}/query",
-            headers=notion_headers(), json=body,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        for page in data["results"]:
-            props = page["properties"]
-            sender  = props.get("Sender", {}).get("email", "") or ""
-            subject_parts = props.get("Subject", {}).get("rich_text", [])
-            subject = "".join(p.get("plain_text","") for p in subject_parts).strip()
-            msg_parts = props.get("Message", {}).get("rich_text", [])
-            message = "".join(p.get("plain_text","") for p in msg_parts).strip()[:300]
-            received = (props.get("Received On", {}).get("date") or {}).get("start", "")[:10]
-            tags = [t.get("name","") for t in props.get("Email Tags", {}).get("multi_select", [])]
-            client_legacy = (props.get("Client (legacy)", {}).get("select") or {}).get("name", "")
-            link = props.get("Original Email Link", {}).get("url", "") or page["url"]
-            if not sender or not subject:
-                continue
-            # Clean sender name from email
-            sender_name = sender.split("@")[0].replace(".", " ").title() if "@" in sender else sender
-            emails.append({
-                "sender":   sender_name,
-                "sender_email": sender,
-                "subject":  subject,
-                "message":  message,
-                "received": received,
-                "tags":     tags,
-                "client":   client_legacy,
-                "url":      link,
-                "is_new":   "New" in tags,
-                "id":       page["id"],
-            })
-        if not data.get("has_more") or len(emails) >= 30:
-            break
-        cursor = data["next_cursor"]
-    print(f"  {len(emails)} emails fetched (last {days_back} days)")
-    return emails
+def _register_url(table_id, rec_id):
+    return f"https://airtable.com/{AIRTABLE_BASE}/{table_id}/{rec_id}"
+
+
+def fetch_deliverables():
+    """Client deliverables still open, nearest due date first."""
+    done_states = {"Sent", "Complete", "Completed", "Done"}
+    rows = []
+    for rec in at_fetch_all(AT_DELIVERABLES):
+        f = rec.get("fields", {})
+        status = f.get("Status") or ""
+        if status in done_states:
+            continue
+        title = (f.get("Deliverable") or "").strip()
+        if not title:
+            continue
+        due = (f.get("Due Date") or "")[:10] or None
+        meta = " · ".join(x for x in [f.get("Type") or "", f.get("Period") or "", status] if x)
+        rows.append({
+            "title":  title,
+            "client": link_name(f.get("Client")),
+            "meta":   meta,
+            "due":    due,
+            "days":   f.get("Days to Due"),
+            "rag":    f.get("RAG") or "",
+            "url":    _register_url(AT_DELIVERABLES, rec["id"]),
+        })
+    rows.sort(key=lambda r: (r["due"] is None, r["due"] or "9999"))
+    print(f"  {len(rows)} open deliverables")
+    return rows
+
+
+def fetch_lease_events():
+    """Lease events with a live deadline inside the horizon, soonest first.
+
+    Anything already past its notice deadline but still open stays on the list —
+    a missed break notice is exactly what this panel exists to catch.
+    """
+    closed = {"Closed", "Complete", "Completed", "Done", "Not Exercised"}
+    rows = []
+    for rec in at_fetch_all(AT_LEASE_EVENTS):
+        f = rec.get("fields", {})
+        status = f.get("Status") or ""
+        if status in closed:
+            continue
+        title = (f.get("Event") or "").strip()
+        if not title:
+            continue
+        days = f.get("Days to Deadline")
+        if days is None:
+            continue
+        try:
+            days = int(days)
+        except (TypeError, ValueError):
+            continue
+        if days > LEASE_HORIZON_DAYS:
+            continue
+        deadline = (f.get("Notice Deadline") or f.get("Event Date") or "")[:10] or None
+        meta = " · ".join(x for x in [f.get("Event Type") or "", status,
+                                      f.get("Next Action") or ""] if x)
+        rows.append({
+            "title":  title,
+            "client": link_name(f.get("Client")),
+            "meta":   meta,
+            "due":    deadline,
+            "days":   days,
+            "rag":    f.get("RAG") or "",
+            "url":    _register_url(AT_LEASE_EVENTS, rec["id"]),
+        })
+    rows.sort(key=lambda r: r["days"])
+    print(f"  {len(rows)} lease events within {LEASE_HORIZON_DAYS} days")
+    return rows
+
+
+def fetch_compliance():
+    """Statutory items expiring inside the horizon, soonest first."""
+    closed = {"Complete", "Completed", "Done", "N/A"}
+    rows = []
+    for rec in at_fetch_all(AT_COMPLIANCE):
+        f = rec.get("fields", {})
+        status = f.get("Status") or ""
+        if status in closed:
+            continue
+        title = (f.get("Item") or "").strip()
+        if not title:
+            continue
+        days = f.get("Days to Expiry")
+        if days is None:
+            continue
+        try:
+            days = int(days)
+        except (TypeError, ValueError):
+            continue
+        if days > COMPLIANCE_HORIZON_DAYS:
+            continue
+        meta = " · ".join(x for x in [f.get("Category") or "",
+                                      link_name(f.get("Property")), status] if x)
+        rows.append({
+            "title":  title,
+            "client": link_name(f.get("Client")),
+            "meta":   meta,
+            "due":    (f.get("Expiry / Next Due") or "")[:10] or None,
+            "days":   days,
+            "rag":    f.get("RAG") or "",
+            "url":    _register_url(AT_COMPLIANCE, rec["id"]),
+        })
+    rows.sort(key=lambda r: r["days"])
+    print(f"  {len(rows)} compliance items within {COMPLIANCE_HORIZON_DAYS} days")
+    return rows
+
+
+def fetch_issues():
+    """Open escalations, highest priority first, stale ones flagged."""
+    closed = {"Closed", "Resolved"}
+    pri_rank = {"Critical": 0, "High": 1, "Medium": 2, "Low": 3}
+    rows = []
+    for rec in at_fetch_all(AT_ISSUES):
+        f = rec.get("fields", {})
+        status = f.get("Status") or ""
+        if status in closed:
+            continue
+        title = (f.get("Issue") or "").strip()
+        if not title:
+            continue
+        stale  = f.get("Stale")
+        amount = f.get("Amount at Stake (DKK)")
+        bits = [f.get("Category") or "", status]
+        if f.get("Next Action"):
+            bits.append(f["Next Action"])
+        if amount:
+            bits.append(f"DKK {fmt_dkk(amount)} at stake")
+        priority = f.get("Priority") or ""
+        rows.append({
+            "title":  title,
+            "client": link_name(f.get("Client")),
+            "meta":   " · ".join(x for x in bits if x),
+            "due":    (f.get("Next Action Date") or "")[:10] or None,
+            "days":   f.get("Days Open"),
+            "rag":    ("🔴 Stale" if stale in (1, True, "1", "⚠️ Stale") else priority),
+            "url":    _register_url(AT_ISSUES, rec["id"]),
+            "_pri":   pri_rank.get(priority, 4),
+        })
+    rows.sort(key=lambda r: r["_pri"])
+    print(f"  {len(rows)} open issues")
+    return rows
+
+
+def fetch_arrears(top_n=ARREARS_TOP_N):
+    """Biggest debtors on the snapshot currently ticked Live."""
+    rows = []
+    total_live = 0.0
+    for rec in at_fetch_all(AT_ARREARS):
+        f = rec.get("fields", {})
+        if not f.get("Live"):
+            continue
+        amount = f.get("Live Arrears (DKK)") or 0
+        try:
+            amount = float(amount)
+        except (TypeError, ValueError):
+            amount = 0.0
+        if amount <= 0:
+            continue
+        total_live += amount
+        rows.append({
+            "title":  (f.get("Tenant") or f.get("Arrears Line") or "").strip(),
+            "client": link_name(f.get("Client")),
+            "amount": amount,
+            "over90": f.get("Live Over 90 (DKK)") or 0,
+            "band":   f.get("Worst Band") or "",
+            "rank":   f.get("Live Rank"),
+            "url":    _register_url(AT_ARREARS, rec["id"]),
+        })
+    rows.sort(key=lambda r: -r["amount"])
+    print(f"  {len(rows)} debtors in arrears, DKK {fmt_dkk(total_live)} total")
+    return rows[:top_n], total_live
 
 
 # ── NEWS HEADLINES ────────────────────────────────────────────────────────────
@@ -410,7 +614,9 @@ def fetch_headlines(feeds, per_feed=4):
 
 # ── AI SUMMARY ────────────────────────────────────────────────────────────────
 
-def generate_summary(overdue, today_tasks, waiting, this_week, work_days, emails, today_str):
+def generate_summary(overdue, today_tasks, waiting, this_week, work_days, today_str,
+                     deliverables=None, lease_events=None, compliance=None,
+                     issues=None, arrears=None):
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
     today_display = date.today().strftime("%A %-d %B %Y")
 
@@ -434,24 +640,50 @@ def generate_summary(overdue, today_tasks, waiting, this_week, work_days, emails
         sections.append(f"TODAY'S TASKS ({len(today_tasks)}):\n{fmt(today_tasks)}")
     if waiting:
         sections.append(f"WAITING ({len(waiting)}):\n{fmt(waiting, 5)}")
-    # Recent emails needing action
-    new_emails = [e for e in emails if e["is_new"]][:5]
-    if new_emails:
-        lines = "\n".join(f"  From {e['sender']}: {e['subject']}" for e in new_emails)
-        sections.append(f"EMAILS NEEDING ACTION:\n{lines}")
+    # Portfolio registers — deadline-driven, so worth surfacing in the briefing
+    def fmt_reg(rows, limit=5):
+        out = []
+        for r in rows[:limit]:
+            bits = [f"  [{r.get('client') or 'No client'}] {r['title']}"]
+            if r.get("days") is not None:
+                d = r["days"]
+                bits.append(f"({abs(int(d))}d {'overdue' if int(d) < 0 else 'away'})")
+            elif r.get("due"):
+                bits.append(f"(due {r['due']})")
+            out.append(" ".join(bits))
+        return "\n".join(out)
+
+    if lease_events:
+        sections.append(f"LEASE DEADLINES ({len(lease_events)}):\n{fmt_reg(lease_events, 6)}")
+    if compliance:
+        sections.append(f"COMPLIANCE EXPIRING ({len(compliance)}):\n{fmt_reg(compliance, 4)}")
+    if deliverables:
+        sections.append(f"CLIENT DELIVERABLES ({len(deliverables)}):\n{fmt_reg(deliverables, 4)}")
+    if issues:
+        sections.append(f"OPEN ESCALATIONS ({len(issues)}):\n{fmt_reg(issues, 4)}")
+    if arrears:
+        lines = "\n".join(
+            f"  [{a.get('client') or 'No client'}] {a['title']} — DKK {fmt_dkk(a['amount'])}"
+            for a in arrears[:5]
+        )
+        sections.append(f"TOP ARREARS (live snapshot):\n{lines}")
 
     task_text = "\n\n".join(sections) or "No active tasks."
 
     system_prompt = (
         f"You are a sharp executive assistant briefing Joseph, Senior Property Manager "
-        f"at CBRE Copenhagen. Clients: AEW (Sydmarken & Kystvejen), SSCP, Ingka/Hedeland, "
-        f"Mileway, AXA Nordic, Arrow Capital, EQT, M&G. Today is {today_display}.\n\n"
+        f"and Key Account Manager at CBRE Copenhagen. Clients: AEW (Sydmarken & "
+        f"Kystvejen), BNP Paribas / AXA IM, SSCP, Ingka/Hedeland, Mileway, Arrow "
+        f"Capital, EQT, M&G, Vestas IM, Manova, Savills IM, Verdion, CBRE IM. "
+        f"Today is {today_display}.\n\n"
         f"Write a tight morning briefing with EXACTLY these 3 section headings on their own line:\n"
         f"MUST DO TODAY\n"
         f"WATCH / CHASING\n"
         f"THIS WEEK\n\n"
-        f"Be SPECIFIC — name actual tasks, meetings, and emails. Reference today's meetings where tasks link. "
-        f"2-3 sentences per section. No bullets. Plain prose."
+        f"Be SPECIFIC — name actual tasks, meetings, clients and amounts. Reference today's "
+        f"meetings where tasks link to them. Treat a lease notice deadline or an expiring "
+        f"compliance certificate as more urgent than an ordinary task: those dates cannot be "
+        f"moved. 2-3 sentences per section. No bullets. Plain prose."
     )
 
     for attempt in range(4):
@@ -663,6 +895,89 @@ def render_family_panel(family_events, today_str):
     return rows
 
 
+# ── PORTFOLIO REGISTER RENDER ─────────────────────────────────────────────────
+
+def rag_pill_html(rag):
+    """RAG values arrive from Airtable already carrying their emoji, e.g. '🟢 On track'."""
+    if not rag:
+        return ""
+    col = "#7a7468"
+    if rag.startswith("🔴") or "Passed" in rag or "Stale" in rag or rag == "High":
+        col = "#c8502a"
+    elif rag.startswith("🟠") or rag.startswith("🟡") or rag == "Medium":
+        col = "#b08a20"
+    elif rag.startswith("🟢"):
+        col = "#16a34a"
+    return f'<span class="rag-pill" style="background:{col}18;color:{col};border-color:{col}44">{esc(rag)}</span>'
+
+
+def render_register_section(heading, icon, rows, colour="var(--accent)", limit=12):
+    """Compact deadline-driven list used by every portfolio register."""
+    if not rows:
+        return ""
+    items = ""
+    for r in rows[:limit]:
+        meta = f'<div class="reg-meta">{esc(r["meta"])}</div>' if r.get("meta") else ""
+        right = (
+            days_badge_html(r.get("days"))
+            + rag_pill_html(r.get("rag"))
+            + client_badge_html(r.get("client"), small=True)
+            + f'<a class="open-link" href="{esc(r["url"])}" target="_blank">↗</a>'
+        )
+        items += (
+            f'<div class="reg-row">'
+            f'<div class="reg-left"><div class="reg-title">{esc(r["title"])}</div>{meta}</div>'
+            f'<div class="reg-right">{right}</div>'
+            f'</div>'
+        )
+    more = ""
+    if len(rows) > limit:
+        more = f'<div class="reg-more">+ {len(rows) - limit} more in Airtable</div>'
+    return (
+        f'<section class="dash-section">'
+        f'<div class="sec-head" style="--sec-col:{colour}">'
+        f'<span>{icon} {heading}</span><span class="sec-count">{len(rows)}</span>'
+        f'</div>'
+        f'<div class="reg-list">{items}{more}</div>'
+        f'</section>'
+    )
+
+
+def render_arrears_section(rows, total_live):
+    """Top debtors on the live snapshot, biggest first."""
+    if not rows:
+        return ""
+    items = ""
+    for i, a in enumerate(rows, start=1):
+        over90 = ""
+        try:
+            if float(a.get("over90") or 0) > 0:
+                over90 = f'<span class="rag-pill" style="background:#c8502a18;color:#c8502a;border-color:#c8502a44">90+ {fmt_dkk(a["over90"])}</span>'
+        except (TypeError, ValueError):
+            pass
+        items += (
+            f'<div class="reg-row">'
+            f'<div class="reg-left">'
+            f'<div class="reg-title"><span class="arr-rank">{i}</span>{esc(a["title"])}</div>'
+            f'<div class="reg-meta">{esc(a.get("band") or "")}</div>'
+            f'</div>'
+            f'<div class="reg-right">'
+            f'<span class="arr-amt">{fmt_dkk(a["amount"])}</span>{over90}'
+            f'{client_badge_html(a.get("client"), small=True)}'
+            f'<a class="open-link" href="{esc(a["url"])}" target="_blank">↗</a>'
+            f'</div></div>'
+        )
+    return (
+        f'<section class="dash-section">'
+        f'<div class="sec-head" style="--sec-col:#c8502a">'
+        f'<span>💰 Top Arrears</span>'
+        f'<span class="sec-count">DKK {fmt_dkk(total_live)} live</span>'
+        f'</div>'
+        f'<div class="reg-list">{items}</div>'
+        f'</section>'
+    )
+
+
 # ── NEWS PANEL RENDER ─────────────────────────────────────────────────────────
 
 def render_news_panel(title, icon, items):
@@ -734,13 +1049,16 @@ def render_client_summary(tasks, today_str):
 # ── HTML BUILD ────────────────────────────────────────────────────────────────
 
 def build_html(overdue, today_tasks, waiting, this_week, later, summary,
-               work_days, family_events, emails, today_str, client_map,
-               news_items, finance_items, palace_items):
+               work_days, family_events, today_str, client_names,
+               news_items, finance_items, palace_items,
+               deliverables, lease_events, compliance, issues,
+               arrears, arrears_total):
     today_display  = datetime.strptime(today_str, "%Y-%m-%d").strftime("%A %-d %B %Y")
     generated_time = datetime.utcnow().strftime("%H:%M UTC")
     all_tasks      = overdue + today_tasks + waiting + this_week + later
     total          = len(all_tasks)
-    clients_json = json.dumps({name: pid for pid, name in client_map.items()})
+    # Airtable Client is a singleSelect, so the editor just needs names.
+    clients_json = json.dumps(client_names)
 
     # Sections
     summary_html    = format_summary_html(summary)
@@ -765,7 +1083,14 @@ def build_html(overdue, today_tasks, waiting, this_week, later, summary,
     task_week_html     = render_task_section("This Week",  "📅", this_week,   today_str, compact=True,  colour="#2563eb")
     task_later_html    = render_task_section("Later",      "📂", later,       today_str, compact=True,  colour="#94a3b8")
 
-    new_email_count = len([e for e in emails if e["is_new"]])
+    lease_html   = render_register_section("Lease Deadlines",  "🔑", lease_events, colour="#7c3aed")
+    compl_html   = render_register_section("Compliance",       "🛡", compliance,   colour="#0891b2")
+    deliv_html   = render_register_section("Client Deliverables", "📋", deliverables, colour="#2563eb")
+    issues_html  = render_register_section("Escalations",      "⚠️", issues,       colour="#c8502a")
+    arrears_html = render_arrears_section(arrears, arrears_total)
+
+    # Anything with a deadline already gone but still open
+    urgent_leases = len([r for r in lease_events if (r.get("days") or 0) < 0])
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -919,6 +1244,19 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
 .ed-cancel:hover{{color:var(--ink);}}
 .task-card.done-fade,.task-row.done-fade{{opacity:0;transform:translateY(-3px);transition:all .5s ease;pointer-events:none;}}
 
+/* ── PORTFOLIO REGISTERS ── */
+.reg-list{{display:flex;flex-direction:column;}}
+.reg-row{{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);}}
+.reg-row:last-child{{border-bottom:none;}}
+.reg-left{{flex:1;min-width:0;}}
+.reg-title{{font-size:.78rem;font-weight:500;line-height:1.35;color:var(--ink);}}
+.reg-meta{{font-size:.62rem;color:var(--muted);margin-top:2px;line-height:1.4;}}
+.reg-right{{display:flex;align-items:center;gap:5px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;max-width:52%;}}
+.reg-more{{font-size:.62rem;color:var(--muted);font-style:italic;padding:7px 0 0;}}
+.rag-pill{{font-size:.5rem;letter-spacing:.8px;text-transform:uppercase;font-weight:600;padding:1px 5px;border:1px solid;border-radius:2px;white-space:nowrap;}}
+.arr-rank{{font-family:'Playfair Display',serif;font-size:.72rem;color:var(--muted);margin-right:7px;}}
+.arr-amt{{font-family:'Playfair Display',serif;font-size:.9rem;color:var(--accent);white-space:nowrap;}}
+
 /* ── SIDEBAR ── */
 .sidebar-section{{margin-bottom:24px;}}
 .sidebar-title{{font-size:.58rem;letter-spacing:3px;text-transform:uppercase;font-weight:700;border-bottom:2px solid var(--ink);padding-bottom:7px;margin-bottom:12px;display:flex;align-items:baseline;justify-content:space-between;}}
@@ -1004,8 +1342,10 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
   <div class="stat gold"><strong>{len(today_tasks)}</strong><span>Today</span></div>
   <div class="stat"><strong>{len(waiting)}</strong><span>Waiting</span></div>
   <div class="stat blue"><strong>{len(this_week)}</strong><span>This Week</span></div>
-  <div class="stat green"><strong>{new_email_count}</strong><span>New Emails</span></div>
   <div class="stat"><strong>{total}</strong><span>Total Open</span></div>
+  <div class="stat red"><strong>{urgent_leases}</strong><span>Deadlines Passed</span></div>
+  <div class="stat gold"><strong>{len(issues)}</strong><span>Escalations</span></div>
+  <div class="stat red"><strong>{fmt_dkk(arrears_total)}</strong><span>Arrears DKK</span></div>
 </div>
 
 {client_sum_html}
@@ -1031,6 +1371,13 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
     {task_waiting_html}
     {task_week_html}
     {task_later_html}
+
+    <!-- Portfolio registers -->
+    {lease_html}
+    {compl_html}
+    {deliv_html}
+    {issues_html}
+    {arrears_html}
 
   </div>
 
@@ -1120,7 +1467,7 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
   var dragSrc = null;
 
   // ── TASK EDITOR ──
-  var CLIENTS = {clients_json};   // client name -> Notion page id
+  var CLIENTS = {clients_json};   // client names — Airtable Client is a singleSelect
   var editTarget = null;
 
   function openEditor(btn) {{
@@ -1133,7 +1480,7 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
       var none = document.createElement('option');
       none.value = ''; none.textContent = '— none —';
       cs.appendChild(none);
-      Object.keys(CLIENTS).sort().forEach(function(name) {{
+      CLIENTS.forEach(function(name) {{
         var o = document.createElement('option');
         o.value = name; o.textContent = name;
         cs.appendChild(o);
@@ -1188,7 +1535,7 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
     var props = {{
       horizon:  horizon,
       due:      due,
-      clientId: clientName ? (CLIENTS[clientName] || '') : '',
+      client:   clientName,
       status:   status,
       priority: priority
     }};
@@ -1214,7 +1561,7 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
         editTarget.setAttribute('data-priority', priority);
         editTarget.classList.add('edited');
         msg.classList.remove('err');
-        msg.textContent = '✓ Saved to Notion';
+        msg.textContent = '✓ Saved to Airtable';
         setTimeout(closeEditor, 900);
       }} else {{
         msg.classList.add('err');
@@ -1448,21 +1795,25 @@ if __name__ == "__main__":
     print(f"Daily Dashboard — {today_str}")
     print(f"{'='*60}")
 
-    print("\nBuilding client map...")
-    client_map = build_client_map()
+    print("\nBuilding link lookup...")
+    client_names, _links = build_link_lookup()
 
     print("\nFetching tasks...")
-    tasks = fetch_tasks(client_map)
+    tasks = fetch_tasks()
 
     print("\nBucketing tasks...")
     overdue, today_tasks, waiting, this_week, later = bucket_tasks(tasks, today_str)
     print(f"  Today:{len(today_tasks)} Overdue:{len(overdue)} Waiting:{len(waiting)} Week:{len(this_week)} Later:{len(later)}")
 
+    print("\nFetching portfolio registers...")
+    lease_events  = fetch_lease_events()
+    compliance    = fetch_compliance()
+    deliverables  = fetch_deliverables()
+    issues        = fetch_issues()
+    arrears, arrears_total = fetch_arrears()
+
     print("\nFetching calendar data...")
     work_days, family_events = fetch_all_calendar_data(today_str)
-
-    print("\nFetching emails...")
-    emails = fetch_emails(days_back=5)
 
     print("\nFetching headlines...")
     news_items    = fetch_headlines(NEWS_FEEDS, per_feed=5)
@@ -1470,13 +1821,17 @@ if __name__ == "__main__":
     palace_items  = fetch_headlines(PALACE_FEEDS, per_feed=4)
 
     print("\nGenerating AI summary...")
-    summary = generate_summary(overdue, today_tasks, waiting, this_week, work_days, emails, today_str)
+    summary = generate_summary(overdue, today_tasks, waiting, this_week, work_days, today_str,
+                               deliverables=deliverables, lease_events=lease_events,
+                               compliance=compliance, issues=issues, arrears=arrears)
     print(f"  Done ({len(summary)} chars)")
 
     print("\nBuilding HTML...")
     html = build_html(overdue, today_tasks, waiting, this_week, later, summary,
-                      work_days, family_events, emails, today_str, client_map,
-                      news_items, finance_items, palace_items)
+                      work_days, family_events, today_str, client_names,
+                      news_items, finance_items, palace_items,
+                      deliverables, lease_events, compliance, issues,
+                      arrears, arrears_total)
 
     with open("index.html", "w", encoding="utf-8") as f:
         f.write(html)
