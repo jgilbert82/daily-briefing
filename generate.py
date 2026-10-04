@@ -35,6 +35,9 @@ LEASE_HORIZON_DAYS      = 120
 COMPLIANCE_HORIZON_DAYS = 90
 ARREARS_TOP_N           = 10
 
+# Overdue tasks older than this are "stale" — shown collapsed, not as urgent
+STALE_AFTER_DAYS        = 7
+
 WORK_CAL_ID        = "86iqekmmn19f3b7j1r9ihepkt9ethdtc@import.calendar.google.com"
 FAMILY_CAL_ID      = "family11040178401192019419@group.calendar.google.com"
 TANIA_CAL_ID       = "tania.andreasen80@gmail.com"
@@ -376,6 +379,7 @@ def bucket_tasks(tasks, today_str):
     field currently carries both '🟡 This Week' and a plain 'This Week' option.
     """
     overdue, today_tasks, waiting, this_week, later = [], [], [], [], []
+    soon_str = (date.fromisoformat(today_str) + timedelta(days=5)).isoformat()
     for t in tasks:
         if t["status"] == "Waiting":
             waiting.append(t); continue
@@ -385,7 +389,7 @@ def bucket_tasks(tasks, today_str):
             overdue.append(t)
         elif horizon == "Today" or due == today_str:
             today_tasks.append(t)
-        elif horizon == "This Week":
+        elif horizon == "This Week" or (due and due <= soon_str):
             this_week.append(t)
         else:
             later.append(t)
@@ -399,6 +403,19 @@ def bucket_tasks(tasks, today_str):
     for b in [today_tasks, waiting, this_week, later]:
         b.sort(key=sk)
     return overdue, today_tasks, waiting, this_week, later
+
+
+def days_late(due, today_str):
+    try:
+        return (date.fromisoformat(today_str) - date.fromisoformat(due)).days
+    except (TypeError, ValueError):
+        return 0
+
+def split_overdue(overdue, today_str):
+    """Recent slips are real; anything older than STALE_AFTER_DAYS is backlog."""
+    slipping = [t for t in overdue if days_late(t["due"], today_str) <= STALE_AFTER_DAYS]
+    stale    = [t for t in overdue if days_late(t["due"], today_str) >  STALE_AFTER_DAYS]
+    return slipping, stale
 
 
 # ── AIRTABLE PORTFOLIO REGISTERS ──────────────────────────────────────────────
@@ -634,8 +651,13 @@ def generate_summary(overdue, today_tasks, waiting, this_week, work_days, today_
         lines = "\n".join(f"  {e['start']} {e['summary']}" for e in today_events)
         sections.append(f"TODAY'S MEETINGS:\n{lines}")
     # Tasks
-    if overdue:
-        sections.append(f"OVERDUE ({len(overdue)}):\n{fmt(overdue, 6)}")
+    slipping, stale = split_overdue(overdue, today_str)
+    if slipping:
+        sections.append(f"SLIPPING — overdue up to {STALE_AFTER_DAYS} days ({len(slipping)}):\n{fmt(slipping, 6)}")
+    if stale:
+        sections.append(f"STALE BACKLOG — overdue more than {STALE_AFTER_DAYS} days ({len(stale)}). "
+                        f"Mostly old dates that need re-dating; mention only if one is clearly critical:\n"
+                        f"{fmt([t for t in stale if t['priority'] == 'High'], 4)}")
     if today_tasks:
         sections.append(f"TODAY'S TASKS ({len(today_tasks)}):\n{fmt(today_tasks)}")
     if waiting:
@@ -705,7 +727,7 @@ def generate_summary(overdue, today_tasks, waiting, this_week, work_days, today_
     return (
         "MUST DO TODAY\n"
         f"AI briefing unavailable this morning (Claude API error). "
-        f"{len(overdue)} overdue, {len(today_tasks)} due today — work the sections below.\n"
+        f"{len(today_tasks)} due today, {len(overdue)} overdue — start with the Start here list below.\n"
         "WATCH / CHASING\n"
         f"{len(waiting)} items waiting on someone else.\n"
         "THIS WEEK\n"
@@ -751,69 +773,427 @@ def due_badge_html(due, today_str):
         return '<span class="badge today">Today</span>'
     return f'<span class="badge upcoming">{fmt_date(due)}</span>'
 
-def render_task_card(t, today_str, compact=False):
-    title    = clean_title(t["title"])
-    page_id  = t["id"]
-    open_lnk = f'<a class="open-link" href="{esc(t["url"])}" target="_blank">↗</a>'
-    done_btn = f'<button class="done-btn" onclick="markDone(this)" data-page-id="{page_id}">✓ Done</button>'
-    add_btn  = f'<button class="add-day-btn" onclick="addToMyDay(this)" data-title="{esc(title)}" data-client="{esc(t["client"] or "")}">+ Day</button>'
-    tmrw_btn = f'<button class="defer-btn" onclick="deferTask(this, \'tomorrow\')" data-page-id="{page_id}">⏭ Tmrw</button>'
-    week_btn = f'<button class="defer-btn" onclick="deferTask(this, \'nextweek\')" data-page-id="{page_id}">→ Wk</button>'
+def task_view_json(tasks):
+    """Tasks as JSON for the client-side task views (Focus / Matrix / By client)."""
+    rows = []
+    for t in tasks:
+        rows.append({
+            "id": t["id"], "title": clean_title(t["title"]),
+            "client": t["client"] or "",
+            "col": client_colour(t["client"]) if t["client"] else "#94a3b8",
+            "due": t["due"] or "", "pri": t["priority"] or "", "hz": t["horizon"] or "",
+            "status": t["status"] or "", "wt": t["work_type"] or "",
+            "src": t["source"] or "", "ctx": t["context"] or "", "url": t["url"],
+        })
+    # "</" escaped so a task title can never close the <script> tag
+    return json.dumps(rows, ensure_ascii=False).replace("</", "<\\/")
 
-    edit_attrs = (
-        f'data-page-id="{page_id}"'
-        f' data-horizon="{esc(t["horizon"] or "")}"'
-        f' data-due="{t["due"] or ""}"'
-        f' data-client="{esc(t["client"] or "")}"'
-        f' data-status="{esc(t["status"] or "")}"'
-        f' data-priority="{esc(t["priority"] or "")}"'
-    )
-    edit_btn = f'<button class="edit-btn" onclick="openEditor(this)" {edit_attrs}>✎ Edit</button>'
-    edit_sm  = f'<button class="edit-btn edit-btn-sm" onclick="openEditor(this)" {edit_attrs}>✎</button>'
 
-    due_b    = due_badge_html(t["due"], today_str)
-    pri_d    = pri_dot_html(t["priority"])
-    cli_b    = client_badge_html(t["client"])
-    wt       = t.get("work_type","")
-    wt_b     = f'<span class="wt-tag">{esc(wt)}</span>' if wt else ""
-    ctx      = t.get("context","")
-    ctx_html = ""
-    if ctx and not compact:
-        ctx_html = f'<div class="task-ctx">{esc(ctx[:180] + ("…" if len(ctx)>180 else ""))}</div>'
+# ── TASK VIEWS (Focus / Urgent×Important / By client) ─────────────────────────
+# Plain (non-f) strings, interpolated into build_html — so single braces here.
+# Rendering is client-side from the TASKS JSON so the three views, the client
+# filter and the search share one dataset, and Done / defer / edit can move a
+# task between groups without a rebuild.
 
-    if compact:
-        done_sm = f'<button class="done-btn-sm" onclick="markDone(this)" data-page-id="{page_id}">✓</button>'
-        add_sm  = f'<button class="add-day-btn-sm" onclick="addToMyDay(this)" data-title="{esc(title)}" data-client="{esc(t["client"] or "")}">+</button>'
-        tmrw_sm = f'<button class="defer-btn-sm" onclick="deferTask(this, \'tomorrow\')" data-page-id="{page_id}">⏭</button>'
-        week_sm = f'<button class="defer-btn-sm" onclick="deferTask(this, \'nextweek\')" data-page-id="{page_id}">→</button>'
-        return (
-            f'<div class="task-row" data-page-id="{page_id}">'
-            f'<div class="task-row-left">{pri_d}<span class="task-row-title">{esc(title)}</span></div>'
-            f'<div class="task-row-right">{due_b}{cli_b}{done_sm}{tmrw_sm}{week_sm}{add_sm}{edit_sm}{open_lnk}</div>'
-            f'</div>'
-        )
-    return (
-        f'<div class="task-card" data-page-id="{page_id}">'
-        f'<div class="card-header"><div class="card-title">{pri_d} {esc(title)}</div>'
-        f'<div class="card-actions">{done_btn}{tmrw_btn}{week_btn}{add_btn}{edit_btn}{open_lnk}</div></div>'
-        f'<div class="card-meta">{due_b}{cli_b}{wt_b}</div>'
-        f'{ctx_html}'
-        f'</div>'
-    )
+TASK_VIEW_CSS = r"""
+/* ── TASK VIEWS ── */
+.tv-head{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;border-bottom:2px solid var(--ink);margin-bottom:12px;flex-wrap:wrap;}
+.tv-tabs{display:flex;gap:2px;flex-wrap:wrap;}
+.tv-tab{padding:8px 14px;font:600 .6rem 'DM Sans',sans-serif;letter-spacing:2px;text-transform:uppercase;background:none;border:none;cursor:pointer;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-2px;}
+.tv-tab.on{color:var(--ink);border-bottom-color:var(--accent);}
+.tv-totals{font-size:.6rem;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding-bottom:8px;}
+.tv-totals b{color:var(--accent);font-weight:600;}
+.tv-toolbar{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-bottom:16px;}
+.tv-chip{font-size:.66rem;padding:3px 9px;border:1px solid var(--border);background:var(--card);cursor:pointer;border-radius:12px;color:var(--ink);font-family:'DM Sans',sans-serif;}
+.tv-chip.on{background:var(--ink);color:var(--paper);border-color:var(--ink);}
+.tv-toolbar input{margin-left:auto;padding:5px 9px;border:1px solid var(--border);background:var(--card);font:inherit;font-size:.74rem;min-width:190px;color:var(--ink);}
+.tv-view{display:none;}.tv-view.on{display:block;}
 
-def render_task_section(heading, icon, tasks, today_str, compact=False, colour="var(--accent)"):
-    if not tasks:
-        return ""
-    items = "\n".join(render_task_card(t, today_str, compact=compact) for t in tasks)
-    grid  = "task-list" if compact else "task-grid"
-    return (
-        f'<section class="dash-section">'
-        f'<div class="sec-head" style="--sec-col:{colour}">'
-        f'<span>{icon} {heading}</span><span class="sec-count">{len(tasks)}</span>'
-        f'</div>'
-        f'<div class="{grid}">{items}</div>'
-        f'</section>'
-    )
+.tv-hero{background:var(--ink);color:var(--paper);padding:16px 18px 8px;margin-bottom:22px;}
+.tv-hero-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;}
+.tv-hero-h b{font-family:'Playfair Display',serif;font-size:1.2rem;}
+.tv-hero-h span{font-size:.62rem;opacity:.5;letter-spacing:1px;}
+.tv-hero ol{list-style:none;counter-reset:n;}
+.tv-hero li{counter-increment:n;display:flex;gap:12px;align-items:flex-start;padding:9px 0;border-top:1px solid rgba(255,255,255,.1);transition:opacity .4s;}
+.tv-hero li::before{content:counter(n);font-family:'Playfair Display',serif;font-size:1.25rem;color:var(--accent);width:20px;flex-shrink:0;line-height:1.1;}
+.tv-hero .tv-t{flex:1;font-size:.84rem;font-weight:500;line-height:1.35;cursor:pointer;}
+.tv-hero .tv-why{display:block;font-size:.66rem;opacity:.55;font-weight:400;margin-top:2px;}
+.tv-hero .tv-ctx{color:rgba(255,255,255,.6);border-left-color:rgba(255,255,255,.2);}
+.tv-hero .tv-acts{opacity:.55;}
+.tv-hero .tv-acts button,.tv-hero .tv-acts a{background:transparent!important;color:rgba(255,255,255,.85)!important;border-color:rgba(255,255,255,.3)!important;}
+
+.tv-grp{margin-bottom:18px;}
+.tv-grp-h{display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:2px solid var(--gc);cursor:pointer;user-select:none;}
+.tv-grp-h .ttl{font:700 .58rem 'DM Sans',sans-serif;letter-spacing:3px;text-transform:uppercase;color:var(--gc);}
+.tv-grp-h .cnt{font-family:'Playfair Display',serif;font-size:.95rem;}
+.tv-grp-h .hint{font-size:.66rem;color:var(--muted);}
+.tv-grp-h .car{margin-left:auto;color:var(--muted);font-size:.62rem;transition:transform .15s;}
+.tv-grp.closed .tv-rows{display:none;}.tv-grp.closed .car{transform:rotate(-90deg);}
+.tv-sweep{font:600 .52rem 'DM Sans',sans-serif;letter-spacing:.8px;text-transform:uppercase;padding:3px 8px;border:1px solid var(--accent);color:var(--accent);background:none;cursor:pointer;}
+.tv-sweep:hover{background:var(--accent);color:#fff;}
+.tv-sweep:disabled{opacity:.6;cursor:default;}
+
+.tv-row{display:grid;grid-template-columns:4px 1fr auto;gap:10px;align-items:center;padding:7px 8px 7px 0;border-bottom:1px solid var(--border);background:var(--card);transition:opacity .4s;}
+.tv-row:hover{background:#fff;}
+.tv-bar{align-self:stretch;background:var(--pc);}
+.tv-main{min-width:0;cursor:pointer;}
+.tv-tt{font-size:.8rem;font-weight:500;line-height:1.35;}
+.tv-meta{display:flex;gap:6px;align-items:center;margin-top:3px;flex-wrap:wrap;}
+.tv-cli{font-size:.58rem;font-weight:600;padding:1px 6px;border-radius:2px;color:#fff;letter-spacing:.3px;white-space:nowrap;}
+.tv-due{font-size:.62rem;font-weight:600;white-space:nowrap;color:var(--muted);}
+.tv-due.late{color:var(--accent);}.tv-due.td{color:var(--gold);}
+.tv-wt{font-size:.6rem;color:var(--muted);}
+.tv-tag{font-size:.52rem;letter-spacing:.6px;text-transform:uppercase;padding:0 5px;border:1px solid var(--blue);color:var(--blue);border-radius:2px;}
+.tv-tag.ip{border-color:var(--green);color:var(--green);}
+.tv-ctx{display:none;font-size:.7rem;color:var(--muted);margin-top:6px;line-height:1.5;border-left:2px solid var(--border);padding-left:7px;max-width:760px;}
+.tv-open .tv-ctx{display:block;}
+.tv-acts{display:flex;gap:4px;align-items:center;opacity:.2;transition:opacity .15s;flex-wrap:wrap;justify-content:flex-end;}
+.tv-row:hover .tv-acts,.tv-hero li:hover .tv-acts{opacity:1;}
+.tv-gone{opacity:.12!important;pointer-events:none;}
+.tv-empty{font-size:.74rem;color:var(--muted);font-style:italic;padding:10px 0;}
+
+.tv-mx{display:grid;grid-template-columns:22px 1fr 1fr;gap:10px;}
+.tv-ax{font:600 .55rem 'DM Sans',sans-serif;letter-spacing:2px;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;justify-content:center;}
+.tv-ax.v{writing-mode:vertical-rl;transform:rotate(180deg);}
+.tv-q{border:1px solid var(--border);background:var(--card);display:flex;flex-direction:column;max-height:440px;}
+.tv-q-h{padding:9px 12px;border-bottom:3px solid var(--qc);display:flex;justify-content:space-between;align-items:baseline;}
+.tv-q-h b{font-family:'Playfair Display',serif;font-size:1rem;}
+.tv-q-h span{font-size:.62rem;color:var(--muted);}
+.tv-q-h .n{font-family:'Playfair Display',serif;font-size:1.3rem;color:var(--qc);}
+.tv-q .tv-rows,.tv-col .tv-rows{overflow:auto;}
+.tv-q .tv-row,.tv-col .tv-row{grid-template-columns:4px 1fr;}
+.tv-q .tv-acts,.tv-col .tv-acts{justify-content:flex-start;margin-top:5px;}
+.tv-legend{display:flex;gap:14px;font-size:.64rem;color:var(--muted);margin:-4px 0 12px;flex-wrap:wrap;}
+.tv-legend i{display:inline-block;width:9px;height:9px;margin-right:4px;vertical-align:-1px;}
+
+.tv-board{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;}
+.tv-col{background:var(--card);border:1px solid var(--border);border-top:4px solid var(--cc);display:flex;flex-direction:column;max-height:520px;}
+.tv-col-h{padding:9px 12px;border-bottom:1px solid var(--border);font-size:.8rem;}
+.tv-col-h b{font-size:.86rem;}
+.tv-stack{display:flex;height:6px;margin-top:7px;background:var(--cream);}
+.tv-stack i{display:block;height:100%;}
+.tv-col-h .lg{font-size:.6rem;color:var(--muted);margin-top:5px;}
+.tv-col .tv-cli{display:none;}
+
+@media(max-width:760px){
+  .tv-mx{grid-template-columns:1fr;}.tv-ax{display:none;}
+  .tv-row{grid-template-columns:4px 1fr;}.tv-row>.tv-acts{grid-column:2;justify-content:flex-start;}
+  .tv-toolbar input{margin-left:0;width:100%;}
+  .tv-hero li{flex-wrap:wrap;}
+  .tv-hero .tv-t{flex-basis:calc(100% - 32px);}
+  .tv-hero li>.tv-acts{width:100%;padding-left:32px;justify-content:flex-start;}
+}
+@media(hover:none){.tv-acts,.tv-hero .tv-acts{opacity:1;}}
+"""
+
+TASK_VIEW_JS = r"""
+(function () {
+  var PRI_COL = {High: '#c8502a', Medium: '#b08a20', Low: '#94a3b8', '': '#d4cfc5'};
+  var GROUPS = [
+    ['today',    'Today',             '#b08a20', 'due or flagged for today',               false],
+    ['slipping', 'Slipping',          '#c8502a', 'overdue ≤ ' + STALE_AFTER + ' days',      false],
+    ['week',     'This week',         '#2563eb', 'flagged this week or due within 5 days', false],
+    ['waiting',  'Waiting on others', '#7a7468', '',                                       true],
+    ['stale',    'Stale backlog',     '#7a7468', 'overdue > ' + STALE_AFTER + ' days — re-date or drop', true],
+    ['later',    'Later / someday',   '#94a3b8', '',                                       true]
+  ];
+  var filt = {client: null, q: ''};
+  var openState = {};
+  var byId = {};
+  TASKS.forEach(function (t) { byId[t.id] = t; });
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function dnum(s) { var p = s.split('-'); return Date.UTC(+p[0], +p[1] - 1, +p[2]) / 864e5; }
+  var TODAY_N = dnum(TODAY);
+  function daysLate(due) { return due ? TODAY_N - dnum(due) : null; }
+  function normHz(h) { return (h || '').replace(/^[^A-Za-z]+/, '').trim(); }
+
+  function zoneOf(t) {
+    if (t.status === 'Waiting') return 'waiting';
+    var late = daysLate(t.due);
+    if (t.deferred && late !== null && late < 0) return 'week';   // just pushed out — show it moved
+    if (late !== null && late > STALE_AFTER) return 'stale';
+    if (late !== null && late > 0) return 'slipping';
+    var hz = normHz(t.hz);
+    if (hz === 'Today' || late === 0) return 'today';
+    if (hz === 'This Week' || (late !== null && late >= -5)) return 'week';
+    return 'later';
+  }
+  function isReply(t) {
+    return t.src === 'Email' || /^(Decide & reply|RE:|FW:|VS:|SV:)/i.test(t.title);
+  }
+  function score(t) {
+    var z = t.zone, late = daysLate(t.due) || 0;
+    var pri = {High: 3, Medium: 2, Low: 1}[t.pri] || 1.5;
+    var urg = {today: 3, slipping: 3.5 - Math.min(late, 7) * 0.05, week: 1.5,
+               stale: 1, later: 0.3, waiting: 0}[z];
+    return pri * 2 + urg * 1.5 + (isReply(t) ? 0.5 : 0) + (t.status === 'In Progress' ? 0.8 : 0);
+  }
+  function prep() {
+    TASKS.forEach(function (t) {
+      t.zone = zoneOf(t);
+      t.score = score(t);
+      t.urgent = t.zone === 'today' || t.zone === 'slipping' || (t.zone === 'stale' && t.pri === 'High');
+    });
+  }
+  function live() { return TASKS.filter(function (t) { return !t.gone; }); }
+  function visible() {
+    return live().filter(function (t) {
+      if (filt.client && (t.client || 'No client') !== filt.client) return false;
+      if (filt.q && (t.title + ' ' + t.ctx + ' ' + t.client).toLowerCase().indexOf(filt.q) < 0) return false;
+      return true;
+    });
+  }
+  function byScore(a, b) { return b.score - a.score; }
+
+  function dueLabel(t) {
+    if (!t.due) return '';
+    var late = daysLate(t.due);
+    if (late > 0) return '<span class="tv-due late">' + late + 'd late</span>';
+    if (late === 0) return '<span class="tv-due td">Today</span>';
+    if (late === -1) return '<span class="tv-due">Tomorrow</span>';
+    var p = t.due.split('-');
+    var m = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+p[1] - 1];
+    return '<span class="tv-due">' + (+p[2]) + ' ' + m + '</span>';
+  }
+  function cliChip(t) {
+    return t.client ? '<span class="tv-cli" style="background:' + t.col + '">' + esc(t.client) + '</span>' : '';
+  }
+  function inMyDay(title) {
+    return typeof items !== 'undefined' && items.some(function (i) { return i.title === title; });
+  }
+  function acts(t, small) {
+    var id = t.id, added = inMyDay(t.title);
+    var ed = 'data-page-id="' + id + '" data-horizon="' + esc(t.hz) + '" data-due="' + esc(t.due) +
+             '" data-client="' + esc(t.client) + '" data-status="' + esc(t.status) +
+             '" data-priority="' + esc(t.pri) + '"';
+    var day = 'data-title="' + esc(t.title) + '" data-client="' + esc(t.client) + '"';
+    var open = '<a class="open-link" href="' + esc(t.url) + '" target="_blank" title="Open in Airtable">↗</a>';
+    if (small) {
+      return '<div class="tv-acts">' +
+        '<button class="done-btn-sm" title="Done" onclick="markDone(this)" data-page-id="' + id + '">✓</button>' +
+        '<button class="defer-btn-sm" title="Tomorrow" onclick="deferTask(this,\'tomorrow\')" data-page-id="' + id + '">⏭</button>' +
+        '<button class="defer-btn-sm" title="Next week" onclick="deferTask(this,\'nextweek\')" data-page-id="' + id + '">→</button>' +
+        '<button class="add-day-btn-sm' + (added ? ' added' : '') + '" title="Add to My Day" onclick="addToMyDay(this)" ' + day + '>' + (added ? '✓' : '+') + '</button>' +
+        '<button class="edit-btn edit-btn-sm" title="Edit" onclick="openEditor(this)" ' + ed + '>✎</button>' + open + '</div>';
+    }
+    return '<div class="tv-acts">' +
+      '<button class="done-btn" onclick="markDone(this)" data-page-id="' + id + '">✓ Done</button>' +
+      '<button class="defer-btn" onclick="deferTask(this,\'tomorrow\')" data-page-id="' + id + '">⏭ Tmrw</button>' +
+      '<button class="defer-btn" onclick="deferTask(this,\'nextweek\')" data-page-id="' + id + '">→ Wk</button>' +
+      '<button class="add-day-btn' + (added ? ' added' : '') + '" onclick="addToMyDay(this)" ' + day + '>' + (added ? '✓ Added' : '+ Day') + '</button>' +
+      '<button class="edit-btn" onclick="openEditor(this)" ' + ed + '>✎ Edit</button>' + open + '</div>';
+  }
+  function meta(t) {
+    return dueLabel(t) + cliChip(t) +
+      (isReply(t) ? '<span class="tv-tag">Reply</span>' : '') +
+      (t.status === 'In Progress' ? '<span class="tv-tag ip">In progress</span>' : '') +
+      (t.wt ? '<span class="tv-wt">' + esc(t.wt) + '</span>' : '');
+  }
+  function row(t, compact) {
+    var ctx = t.ctx ? '<div class="tv-ctx">' + esc(t.ctx) + '</div>' : '';
+    return '<div class="tv-row" data-tv-id="' + t.id + '" style="--pc:' + (PRI_COL[t.pri] || PRI_COL['']) + '">' +
+      '<div class="tv-bar"></div>' +
+      '<div class="tv-main" onclick="tvToggle(event,this)"><div class="tv-tt">' + esc(t.title) + '</div>' +
+      '<div class="tv-meta">' + meta(t) + '</div>' + ctx + (compact ? acts(t, true) : '') + '</div>' +
+      (compact ? '' : acts(t, false)) + '</div>';
+  }
+
+  function renderFocus() {
+    var v = visible();
+    var top = v.filter(function (t) { return t.zone !== 'waiting' && t.zone !== 'later'; })
+               .sort(byScore).slice(0, 5);
+    var topIds = {};
+    top.forEach(function (t) { topIds[t.id] = 1; });
+    function why(t) {
+      var late = daysLate(t.due), bits = [];
+      if (t.pri === 'High') bits.push('High priority');
+      if (late > 0) bits.push(late + 'd late');
+      else if (t.zone === 'today') bits.push('Due today');
+      if (isReply(t)) bits.push('needs a reply');
+      if (t.client) bits.push(t.client);
+      return bits.join(' · ');
+    }
+    var h = '';
+    if (top.length) {
+      h += '<div class="tv-hero"><div class="tv-hero-h"><b>Start here</b><span>TOP ' + top.length +
+           ' BY PRIORITY × URGENCY</span></div><ol>' +
+        top.map(function (t) {
+          return '<li data-tv-id="' + t.id + '"><div class="tv-t" onclick="tvToggle(event,this)">' + esc(t.title) +
+            '<span class="tv-why">' + esc(why(t)) + '</span>' +
+            (t.ctx ? '<div class="tv-ctx">' + esc(t.ctx) + '</div>' : '') + '</div>' + acts(t, true) + '</li>';
+        }).join('') + '</ol></div>';
+    }
+    GROUPS.forEach(function (g) {
+      var z = g[0];
+      var list = v.filter(function (t) { return t.zone === z && !topIds[t.id]; }).sort(byScore);
+      if (!list.length) return;
+      var closed = (z in openState) ? !openState[z] : g[4];
+      h += '<div class="tv-grp' + (closed ? ' closed' : '') + '" style="--gc:' + g[2] + '">' +
+        '<div class="tv-grp-h" onclick="tvGroup(\'' + z + '\',this)">' +
+        '<span class="ttl">' + g[1] + '</span><span class="cnt">' + list.length + '</span>' +
+        '<span class="hint">' + esc(g[3]) + '</span>' +
+        (z === 'stale' ? '<button class="tv-sweep" onclick="tvSweep(event,this)">Sweep all → Someday</button>' : '') +
+        '<span class="car">▼</span></div>' +
+        '<div class="tv-rows">' + list.map(function (t) { return row(t, false); }).join('') + '</div></div>';
+    });
+    document.getElementById('tv-focus').innerHTML = h || '<div class="tv-empty">Nothing matches.</div>';
+  }
+
+  function renderMatrix() {
+    var v = visible().filter(function (t) { return t.zone !== 'waiting'; });
+    var Q = [
+      ['Do first', 'urgent + High priority',  function (t) { return t.urgent && t.pri === 'High'; },  '#c8502a'],
+      ['Quick wins / delegate', 'urgent, not High', function (t) { return t.urgent && t.pri !== 'High'; }, '#b08a20'],
+      ['Schedule', 'High, not urgent',         function (t) { return !t.urgent && t.pri === 'High'; }, '#2563eb'],
+      ['Park it', 'neither',                   function (t) { return !t.urgent && t.pri !== 'High'; }, '#94a3b8']
+    ];
+    function q(d) {
+      var list = v.filter(d[2]).sort(byScore);
+      return '<div class="tv-q" style="--qc:' + d[3] + '"><div class="tv-q-h"><div><b>' + d[0] + '</b><br><span>' +
+        d[1] + '</span></div><div class="n">' + list.length + '</div></div><div class="tv-rows">' +
+        (list.map(function (t) { return row(t, true); }).join('') || '<div class="tv-empty" style="padding:10px 12px">Empty</div>') +
+        '</div></div>';
+    }
+    document.getElementById('tv-matrix').innerHTML =
+      '<div class="tv-legend"><span>Urgent = due today or late (stale items only if High)</span><span>Important = Priority High</span><span>Waiting tasks excluded</span></div>' +
+      '<div class="tv-mx"><div></div><div class="tv-ax">Important</div><div class="tv-ax">Less important</div>' +
+      '<div class="tv-ax v">Urgent</div>' + q(Q[0]) + q(Q[1]) +
+      '<div class="tv-ax v">Not urgent</div>' + q(Q[2]) + q(Q[3]) + '</div>';
+  }
+
+  function renderClient() {
+    var v = visible(), by = {}, order;
+    v.forEach(function (t) { var c = t.client || 'No client'; (by[c] = by[c] || []).push(t); });
+    order = Object.keys(by).sort(function (a, b) { return by[b].length - by[a].length; });
+    var Z = [['slipping', '#c8502a', 'late'], ['stale', '#e8b4a3', 'stale'], ['today', '#b08a20', 'today'],
+             ['week', '#2563eb', 'this week'], ['later', '#cbd5e1', 'later'], ['waiting', '#7a7468', 'waiting']];
+    var h = '<div class="tv-legend">' + Z.map(function (z) {
+      return '<span><i style="background:' + z[1] + '"></i>' + z[2] + '</span>'; }).join('') + '</div><div class="tv-board">';
+    order.forEach(function (c) {
+      var list = by[c].sort(byScore), n = list.length;
+      var stack = Z.map(function (z) {
+        var k = list.filter(function (t) { return t.zone === z[0]; }).length;
+        return k ? '<i style="width:' + (k / n * 100) + '%;background:' + z[1] + '"></i>' : '';
+      }).join('');
+      var now = list.filter(function (t) { return t.zone === 'today' || t.zone === 'slipping'; }).length;
+      var cc = c === 'No client' ? '#94a3b8' : list[0].col;
+      h += '<div class="tv-col" style="--cc:' + cc + '"><div class="tv-col-h"><b>' + esc(c) + '</b> · ' + n +
+        '<div class="tv-stack">' + stack + '</div><div class="lg">' + now + ' need attention now</div></div>' +
+        '<div class="tv-rows">' + list.map(function (t) { return row(t, true); }).join('') + '</div></div>';
+    });
+    document.getElementById('tv-client').innerHTML = h + '</div>' +
+      (order.length ? '' : '<div class="tv-empty">Nothing matches.</div>');
+  }
+
+  function renderToolbar() {
+    var counts = {};
+    live().forEach(function (t) { var c = t.client || 'No client'; counts[c] = (counts[c] || 0) + 1; });
+    var names = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a]; });
+    if (filt.client && !counts[filt.client]) filt.client = null;
+    var tb = document.getElementById('tv-toolbar');
+    tb.innerHTML =
+      '<button class="tv-chip' + (filt.client ? '' : ' on') + '" data-c="">All</button>' +
+      names.map(function (c) {
+        return '<button class="tv-chip' + (filt.client === c ? ' on' : '') + '" data-c="' + esc(c) + '">' +
+          esc(c) + ' ' + counts[c] + '</button>';
+      }).join('') +
+      '<input id="tv-q" type="search" placeholder="Search tasks…" value="' + esc(filt.q) + '">';
+    tb.querySelectorAll('.tv-chip').forEach(function (b) {
+      b.onclick = function () { filt.client = b.getAttribute('data-c') || null; render(); };
+    });
+    document.getElementById('tv-q').oninput = function () { filt.q = this.value.toLowerCase().trim(); renderViews(); };
+  }
+  function renderViews() {
+    prep();
+    renderFocus(); renderMatrix(); renderClient();
+    var l = live();
+    var now = l.filter(function (t) { return t.zone === 'today' || t.zone === 'slipping'; }).length;
+    var stale = l.filter(function (t) { return t.zone === 'stale'; }).length;
+    document.getElementById('tv-totals').innerHTML =
+      l.length + ' open · <b>' + now + ' need attention</b> · ' + stale + ' stale';
+  }
+  function render() { prep(); renderToolbar(); renderViews(); }
+
+  // ── hooks used by markDone / deferTask / saveEdit ──
+  function fadeThenRender(id) {
+    document.querySelectorAll('[data-tv-id="' + id + '"]').forEach(function (el) { el.classList.add('tv-gone'); });
+    setTimeout(render, 500);
+  }
+  window.tvRemove = function (id) {
+    if (byId[id]) byId[id].gone = true;
+    fadeThenRender(id);
+  };
+  window.tvPatch = function (id, p, deferred) {
+    var t = byId[id];
+    if (!t) return;
+    t.deferred = !!deferred;
+    if ('horizon' in p)  t.hz = p.horizon || '';
+    if ('due' in p)      t.due = p.due || '';
+    if ('status' in p)   t.status = p.status || '';
+    if ('priority' in p) t.pri = p.priority || '';
+    if ('client' in p) {
+      t.client = p.client || '';
+      t.col = CLIENT_COL[t.client] || '#94a3b8';
+    }
+    if (t.status === 'Done') t.gone = true;
+    fadeThenRender(id);
+  };
+  window.tvToggle = function (e, el) {
+    if (e.target.closest('button, a')) return;
+    (el.closest('.tv-row') || el).classList.toggle('tv-open');
+  };
+  window.tvGroup = function (z, head) {
+    var g = head.parentNode;
+    var nowClosed = g.classList.toggle('closed');
+    openState[z] = !nowClosed;
+  };
+  window.tvSweep = function (e, btn) {
+    e.stopPropagation();
+    var list = live().filter(function (t) { return t.zone === 'stale'; });
+    if (!list.length) return;
+    if (!confirm('Move ' + list.length + ' stale tasks to ⚪ Someday and clear their due dates?\n\n' +
+                 'They stay open in Airtable — they just stop counting as overdue.')) return;
+    btn.disabled = true;
+    var i = 0, ok = 0, fail = 0;
+    (function next() {
+      if (i >= list.length) {
+        btn.textContent = '✓ ' + ok + ' moved' + (fail ? ' · ' + fail + ' failed' : '');
+        setTimeout(render, 1200);
+        return;
+      }
+      var t = list[i++];
+      btn.textContent = 'Sweeping ' + i + '/' + list.length + '…';
+      fetch(WORKER_URL, {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({pageId: t.id, action: 'update', props: {horizon: '⚪ Someday', due: ''}})
+      })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { if (d.ok) { ok++; t.hz = '⚪ Someday'; t.due = ''; } else { fail++; } })
+      .catch(function () { fail++; })
+      .then(function () { setTimeout(next, 250); });   // stay under Airtable's 5 req/s
+    })();
+  };
+
+  // ── tabs (remembered per browser) ──
+  function showTab(v) {
+    document.querySelectorAll('.tv-tab').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-v') === v); });
+    document.querySelectorAll('.tv-view').forEach(function (x) { x.classList.toggle('on', x.id === 'tv-' + v); });
+    try { localStorage.setItem('tvTab', v); } catch (e) {}
+  }
+  document.querySelectorAll('.tv-tab').forEach(function (b) {
+    b.onclick = function () { showTab(b.getAttribute('data-v')); };
+  });
+  var saved = null;
+  try { saved = localStorage.getItem('tvTab'); } catch (e) {}
+  if (saved && document.getElementById('tv-' + saved)) showTab(saved);
+
+  render();
+})();
+"""
 
 
 # ── WORK CALENDAR RENDER ──────────────────────────────────────────────────────
@@ -1077,11 +1457,9 @@ def build_html(overdue, today_tasks, waiting, this_week, later, summary,
     finance_html = render_news_panel("Property & Finance", "📈", finance_items)
     palace_html  = render_news_panel("Crystal Palace", "🦅", palace_items)
 
-    task_today_html    = render_task_section("Today",      "⚡", today_tasks, today_str, compact=False, colour="#b08a20")
-    task_overdue_html  = render_task_section("Overdue",    "🔴", overdue,     today_str, compact=False, colour="#c8502a")
-    task_waiting_html  = render_task_section("Waiting On", "⏳", waiting,     today_str, compact=True,  colour="#7a7468")
-    task_week_html     = render_task_section("This Week",  "📅", this_week,   today_str, compact=True,  colour="#2563eb")
-    task_later_html    = render_task_section("Later",      "📂", later,       today_str, compact=True,  colour="#94a3b8")
+    tasks_json      = task_view_json(all_tasks)
+    client_col_json = json.dumps({n: client_colour(n) for n in client_names}, ensure_ascii=False)
+    slipping, stale = split_overdue(overdue, today_str)
 
     lease_html   = render_register_section("Lease Deadlines",  "🔑", lease_events, colour="#7c3aed")
     compl_html   = render_register_section("Compliance",       "🛡", compliance,   colour="#0891b2")
@@ -1320,6 +1698,7 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
   #my-day-panel{{width:calc(100vw - 32px);right:16px;bottom:16px;}}
   #my-day-panel.collapsed{{width:140px;}}
 }}
+{TASK_VIEW_CSS}
 </style>
 </head>
 <body>
@@ -1338,10 +1717,11 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
 </div>
 
 <div class="stats-bar">
-  <div class="stat red"><strong>{len(overdue)}</strong><span>Overdue</span></div>
+  <div class="stat red"><strong>{len(slipping)}</strong><span>Slipping</span></div>
   <div class="stat gold"><strong>{len(today_tasks)}</strong><span>Today</span></div>
   <div class="stat"><strong>{len(waiting)}</strong><span>Waiting</span></div>
   <div class="stat blue"><strong>{len(this_week)}</strong><span>This Week</span></div>
+  <div class="stat"><strong>{len(stale)}</strong><span>Stale</span></div>
   <div class="stat"><strong>{total}</strong><span>Total Open</span></div>
   <div class="stat red"><strong>{urgent_leases}</strong><span>Deadlines Passed</span></div>
   <div class="stat gold"><strong>{len(issues)}</strong><span>Escalations</span></div>
@@ -1365,12 +1745,21 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
       <div class="day-cols">{day_cols}</div>
     </div>
 
-    <!-- Tasks -->
-    {task_today_html}
-    {task_overdue_html}
-    {task_waiting_html}
-    {task_week_html}
-    {task_later_html}
+    <!-- Tasks: rendered client-side from TASKS (see TASK_VIEW_JS) -->
+    <section class="dash-section" id="tasks">
+      <div class="tv-head">
+        <div class="tv-tabs">
+          <button class="tv-tab on" data-v="focus">Focus</button>
+          <button class="tv-tab" data-v="matrix">Urgent × Important</button>
+          <button class="tv-tab" data-v="client">By client</button>
+        </div>
+        <div class="tv-totals" id="tv-totals"></div>
+      </div>
+      <div class="tv-toolbar" id="tv-toolbar"></div>
+      <div class="tv-view on" id="tv-focus"></div>
+      <div class="tv-view" id="tv-matrix"></div>
+      <div class="tv-view" id="tv-client"></div>
+    </section>
 
     <!-- Portfolio registers -->
     {lease_html}
@@ -1540,6 +1929,7 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
       priority: priority
     }};
 
+    var editId = editTarget.getAttribute('data-page-id');
     btnSave.disabled = true; btnSave.textContent = 'Saving…';
     fetch(WORKER_URL, {{
       method: 'POST',
@@ -1562,7 +1952,10 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
         editTarget.classList.add('edited');
         msg.classList.remove('err');
         msg.textContent = '✓ Saved to Airtable';
-        setTimeout(closeEditor, 900);
+        setTimeout(function() {{
+          closeEditor();
+          if (window.tvPatch) tvPatch(editId, props);
+        }}, 900);
       }} else {{
         msg.classList.add('err');
         msg.textContent = '✗ ' + (data.error || 'Failed');
@@ -1694,6 +2087,7 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
       if (data.ok) {{
         btn.textContent = btn.classList.contains('done-btn-sm') ? '✓' : '✓ Done';
         if (card) card.classList.add('done-fade');
+        if (window.tvRemove) tvRemove(pageId);
       }} else {{
         btn.textContent = 'Error'; btn.style.color = 'var(--accent)';
       }}
@@ -1734,6 +2128,7 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
       if (data.ok) {{
         btn.textContent = small ? '✓' : '✓ ' + label.slice(2);
         if (card) card.classList.add('done-fade');
+        if (window.tvPatch) tvPatch(pageId, {{ horizon: horizon, due: dueDate }}, true);
       }} else {{
         btn.textContent = 'Error'; btn.style.color = 'var(--accent)';
       }}
@@ -1782,6 +2177,13 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
   function escHtml(s) {{
     return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }}
+</script>
+<script>
+  var TASKS = {tasks_json};
+  var CLIENT_COL = {client_col_json};
+  var TODAY = "{today_str}";
+  var STALE_AFTER = {STALE_AFTER_DAYS};
+{TASK_VIEW_JS}
 </script>
 </body>
 </html>"""
