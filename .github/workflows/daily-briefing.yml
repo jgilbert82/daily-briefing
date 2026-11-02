@@ -27,7 +27,7 @@ jobs:
 
       - name: Generate briefing
         env:
-          AIRTABLE_API_KEY: ${{ secrets.AIRTABLE_API_KEY }}
+          GOOGLE_SA_JSON: ${{ secrets.GOOGLE_SA_JSON }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
         run: python generate.py

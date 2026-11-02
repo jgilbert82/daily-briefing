@@ -1,0 +1,34 @@
+name: Import tasks from Airtable
+
+# One-off copy of every Airtable task into the Task Database sheet.
+# Run it only BEFORE switching over: see the notes at the top of import_airtable.py.
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type yes to replace the Airtable rows in the sheet with a fresh copy'
+        required: true
+        default: 'no'
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests google-auth google-api-python-client
+
+      - name: Import
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+          AIRTABLE_API_KEY: ${{ secrets.AIRTABLE_API_KEY }}
+          GOOGLE_SA_JSON: ${{ secrets.GOOGLE_SA_JSON }}
+        run: python import_airtable.py
