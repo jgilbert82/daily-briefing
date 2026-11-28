@@ -25,17 +25,11 @@ jobs:
       - name: Install dependencies
         run: pip install requests anthropic google-auth google-auth-httplib2 google-api-python-client
 
+      # Publishes straight to Gilbert Data Hub (PUT /api/briefing); nothing is committed.
       - name: Generate briefing
         env:
-          AIRTABLE_API_KEY: ${{ secrets.AIRTABLE_API_KEY }}
+          GDH_API_URL: ${{ secrets.GDH_API_URL }}
+          GDH_API_TOKEN: ${{ secrets.GDH_API_TOKEN }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
         run: python generate.py
-
-      - name: Commit and push updated index.html
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add index.html
-          git diff --staged --quiet || git commit -m "Daily briefing $(date +'%Y-%m-%d %H:%M')"
-          git push

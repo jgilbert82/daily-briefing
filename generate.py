@@ -1,7 +1,7 @@
 """
 generate.py — Daily Dashboard
-Pulls from: Airtable (tasks + portfolio registers), Google Calendar (work + family), Claude AI
-Writes index.html to GitHub Pages
+Pulls from: Gilbert Data Hub (tasks + picklists), Google Calendar (work + family), Claude AI
+Publishes the page to Gilbert Data Hub (PUT /api/briefing); also writes index.html locally
 """
 
 import os
@@ -18,22 +18,9 @@ from googleapiclient.discovery import build
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
 
-AIRTABLE_BASE      = "app8HGKiLT6cY5zZi"          # Task Management HQ
-AT_TASKS           = "tblIGUa96EX3BtcP7"
-AT_CLIENTS         = "tblHl91zUnvrV1hGn"
-AT_DELIVERABLES    = "tblumdWwH0248wpx6"
-AT_LEASE_EVENTS    = "tblA8HnEJzvhLj8Ca"
-AT_COMPLIANCE      = "tblKQ6qLAqMt2TBEE"
-AT_ISSUES          = "tblndSPlPbLDTrGCq"
-AT_ARREARS         = "tblm5HhZdjVdlCZCx"
-AT_PROPERTIES      = "tblMTx3MuKFL0HvJ1"
-AIRTABLE_API       = "https://api.airtable.com/v0"
-WORKER_URL         = "https://notion-proxy.jgilbert82.workers.dev"
-
-# How far ahead the portfolio registers look
-LEASE_HORIZON_DAYS      = 120
-COMPLIANCE_HORIZON_DAYS = 90
-ARREARS_TOP_N           = 10
+# Gilbert Data Hub: GDH_API_URL and GDH_API_TOKEN come from the environment
+# (GitHub Actions secrets). The page itself is served by the hub at "/", so its
+# write-backs use the relative /app/api/... paths.
 
 # Overdue tasks older than this are "stale" — shown collapsed, not as urgent
 STALE_AFTER_DAYS        = 7
@@ -68,88 +55,31 @@ PALACE_FEEDS = [
 
 COPENHAGEN = timezone(timedelta(hours=2))  # CEST summer
 
-# Airtable record-id -> display-name, populated by build_link_lookup() at startup
-LINK_NAMES = {}
-
 
 # ── HELPERS ───────────────────────────────────────────────────────────────────
 
-def airtable_headers():
-    return {
-        "Authorization": f"Bearer {os.environ['AIRTABLE_API_KEY']}",
-        "Content-Type": "application/json",
-    }
-
-def at_fetch_all(table_id, fields=None, page_size=100):
-    """GET every record from an Airtable table, following pagination.
-
-    Returns a list of {"id": rec..., "fields": {...}}. Airtable omits empty
-    fields entirely, so always read through .get() with a default.
-    """
-    records = []
-    offset  = None
-    while True:
-        params = {"pageSize": page_size}
-        if fields:
-            params["fields[]"] = fields
-        if offset:
-            params["offset"] = offset
-        resp = requests.get(
-            f"{AIRTABLE_API}/{AIRTABLE_BASE}/{table_id}",
-            headers=airtable_headers(), params=params, timeout=30,
+def gdh_config():
+    """(base_url, token) for Gilbert Data Hub, or exit with a clear message."""
+    url   = (os.environ.get("GDH_API_URL") or "").strip().rstrip("/")
+    token = (os.environ.get("GDH_API_TOKEN") or "").strip()
+    missing = [name for name, v in (("GDH_API_URL", url), ("GDH_API_TOKEN", token)) if not v]
+    if missing:
+        raise SystemExit(
+            f"ERROR: {' and '.join(missing)} not set. Add the secret(s) in GitHub "
+            f"(Settings → Secrets and variables → Actions) and pass them to the Generate step."
         )
-        resp.raise_for_status()
-        data = resp.json()
-        records.extend(data.get("records", []))
-        offset = data.get("offset")
-        if not offset:
-            break
-    return records
+    return url, token
 
-def link_name(value, lookup=None):
-    """First name behind a multipleRecordLinks field.
-
-    The Airtable REST API returns linked records as bare record IDs
-    (["recXXXX"]), unlike the MCP tools which enrich them with names — so we
-    resolve them against a locally built id -> name map. LINK_NAMES is that map,
-    populated once at startup by build_link_lookup().
-    """
-    if not isinstance(value, list) or not value:
-        return ""
-    first = value[0]
-    if isinstance(first, dict):                       # defensive: enriched shape
-        return first.get("name") or ""
-    return (lookup or LINK_NAMES).get(first, "")
+def gdh_get(path):
+    """GET {GDH_API_URL}{path} with the bearer token; returns the decoded JSON."""
+    url, token = gdh_config()
+    resp = requests.get(f"{url}{path}", headers={"Authorization": f"Bearer {token}"}, timeout=30)
+    resp.raise_for_status()
+    return resp.json()
 
 def norm_horizon(h):
     """Strip the emoji prefix so '🟡 This Week' and 'This Week' bucket alike."""
     return re.sub(r'^[^\w]+', '', (h or "").strip()).strip()
-
-def fmt_dkk(n):
-    """Compact DKK for the stats bar and register rows."""
-    try:
-        n = float(n)
-    except (TypeError, ValueError):
-        return "—"
-    if abs(n) >= 1_000_000:
-        return f"{n/1_000_000:.1f}M"
-    if abs(n) >= 1_000:
-        return f"{n/1_000:.0f}k"
-    return f"{n:.0f}"
-
-def days_badge_html(days):
-    """Colour a days-remaining number: past, imminent, comfortable."""
-    if days is None:
-        return ""
-    try:
-        d = int(days)
-    except (TypeError, ValueError):
-        return ""
-    if d < 0:
-        return f'<span class="badge overdue">{abs(d)}d ago</span>'
-    if d <= 14:
-        return f'<span class="badge today">{d}d</span>'
-    return f'<span class="badge upcoming">{d}d</span>'
 
 def esc(s):
     return (s or "").replace("&","&amp;").replace("<","&lt;").replace(">","&gt;").replace('"',"&quot;")
@@ -291,39 +221,19 @@ def fetch_all_calendar_data(today_str):
         return {}, []
 
 
-# ── AIRTABLE CLIENTS ──────────────────────────────────────────────────────────
+# ── PICKLISTS ─────────────────────────────────────────────────────────────────
 
-def build_link_lookup():
-    """Build the record-id -> display-name map used to resolve linked fields.
-
-    Returns (client_names, lookup). client_names feeds the editor dropdown;
-    lookup covers Clients and Properties, which is every link the registers read.
-    """
-    global LINK_NAMES
-    lookup = {}
-    names  = []
-
-    for rec in at_fetch_all(AT_CLIENTS, fields=["Client Name"]):
-        name = (rec.get("fields", {}).get("Client Name") or "").strip()
-        if name:
-            lookup[rec["id"]] = name
-            names.append(name)
-
-    for rec in at_fetch_all(AT_PROPERTIES, fields=["Property"]):
-        prop = (rec.get("fields", {}).get("Property") or "").strip()
-        if prop:
-            lookup[rec["id"]] = prop
-
-    LINK_NAMES = lookup
-    names = sorted(set(names))
-    print(f"  {len(names)} clients, {len(lookup)} linkable records")
-    return names, lookup
+def fetch_client_names():
+    """Client names for the editor dropdown, from the hub's task picklists."""
+    names = sorted(set(n.strip() for n in gdh_get("/api/picklists").get("Client", []) if n and n.strip()))
+    print(f"  {len(names)} clients")
+    return names
 
 
-# ── AIRTABLE TASKS ────────────────────────────────────────────────────────────
+# ── TASKS ─────────────────────────────────────────────────────────────────────
 
 def fetch_tasks():
-    """Open tasks from the Airtable Tasks table.
+    """Open tasks from Gilbert Data Hub (GET /api/tasks?open=1, one response).
 
     Emails land here too (Source = Email, written by TaskRobin), so an email is
     just a task that happens to carry a Sender. There is no separate email
@@ -332,7 +242,7 @@ def fetch_tasks():
     all_tasks = []
     seen      = {}
     skipped   = 0
-    for rec in at_fetch_all(AT_TASKS):
+    for rec in gdh_get("/api/tasks?open=1").get("records", []):
         f = rec.get("fields", {})
         status = f.get("Status") or "Not Started"
         if status == "Done":
@@ -366,7 +276,6 @@ def fetch_tasks():
             "client": client, "context": context,
             "source": source, "sender": sender,
             "id": rec["id"],
-            "url": f"https://airtable.com/{AIRTABLE_BASE}/{AT_TASKS}/{rec['id']}",
         })
     print(f"  {len(all_tasks)} active tasks fetched ({skipped} duplicates skipped)")
     return all_tasks
@@ -375,8 +284,8 @@ def fetch_tasks():
 def bucket_tasks(tasks, today_str):
     """Split tasks into the five dashboard buckets.
 
-    Horizon is compared after stripping the emoji prefix, because the Airtable
-    field currently carries both '🟡 This Week' and a plain 'This Week' option.
+    Horizon is compared after stripping the emoji prefix, because older task
+    data carried both '🟡 This Week' and a plain 'This Week' option.
     """
     overdue, today_tasks, waiting, this_week, later = [], [], [], [], []
     soon_str = (date.fromisoformat(today_str) + timedelta(days=5)).isoformat()
@@ -418,190 +327,6 @@ def split_overdue(overdue, today_str):
     return slipping, stale
 
 
-# ── AIRTABLE PORTFOLIO REGISTERS ──────────────────────────────────────────────
-#
-# Each of these returns a list of plain dicts shaped for render_register_section:
-#   {title, client, meta, days, rag, url}
-# Sorting and windowing happen here in Python — the tables are small enough that
-# pulling everything and filtering locally beats wrestling with filterByFormula.
-
-def _register_url(table_id, rec_id):
-    return f"https://airtable.com/{AIRTABLE_BASE}/{table_id}/{rec_id}"
-
-
-def fetch_deliverables():
-    """Client deliverables still open, nearest due date first."""
-    done_states = {"Sent", "Complete", "Completed", "Done"}
-    rows = []
-    for rec in at_fetch_all(AT_DELIVERABLES):
-        f = rec.get("fields", {})
-        status = f.get("Status") or ""
-        if status in done_states:
-            continue
-        title = (f.get("Deliverable") or "").strip()
-        if not title:
-            continue
-        due = (f.get("Due Date") or "")[:10] or None
-        meta = " · ".join(x for x in [f.get("Type") or "", f.get("Period") or "", status] if x)
-        rows.append({
-            "title":  title,
-            "client": link_name(f.get("Client")),
-            "meta":   meta,
-            "due":    due,
-            "days":   f.get("Days to Due"),
-            "rag":    f.get("RAG") or "",
-            "url":    _register_url(AT_DELIVERABLES, rec["id"]),
-        })
-    rows.sort(key=lambda r: (r["due"] is None, r["due"] or "9999"))
-    print(f"  {len(rows)} open deliverables")
-    return rows
-
-
-def fetch_lease_events():
-    """Lease events with a live deadline inside the horizon, soonest first.
-
-    Anything already past its notice deadline but still open stays on the list —
-    a missed break notice is exactly what this panel exists to catch.
-    """
-    closed = {"Closed", "Complete", "Completed", "Done", "Not Exercised"}
-    rows = []
-    for rec in at_fetch_all(AT_LEASE_EVENTS):
-        f = rec.get("fields", {})
-        status = f.get("Status") or ""
-        if status in closed:
-            continue
-        title = (f.get("Event") or "").strip()
-        if not title:
-            continue
-        days = f.get("Days to Deadline")
-        if days is None:
-            continue
-        try:
-            days = int(days)
-        except (TypeError, ValueError):
-            continue
-        if days > LEASE_HORIZON_DAYS:
-            continue
-        deadline = (f.get("Notice Deadline") or f.get("Event Date") or "")[:10] or None
-        meta = " · ".join(x for x in [f.get("Event Type") or "", status,
-                                      f.get("Next Action") or ""] if x)
-        rows.append({
-            "title":  title,
-            "client": link_name(f.get("Client")),
-            "meta":   meta,
-            "due":    deadline,
-            "days":   days,
-            "rag":    f.get("RAG") or "",
-            "url":    _register_url(AT_LEASE_EVENTS, rec["id"]),
-        })
-    rows.sort(key=lambda r: r["days"])
-    print(f"  {len(rows)} lease events within {LEASE_HORIZON_DAYS} days")
-    return rows
-
-
-def fetch_compliance():
-    """Statutory items expiring inside the horizon, soonest first."""
-    closed = {"Complete", "Completed", "Done", "N/A"}
-    rows = []
-    for rec in at_fetch_all(AT_COMPLIANCE):
-        f = rec.get("fields", {})
-        status = f.get("Status") or ""
-        if status in closed:
-            continue
-        title = (f.get("Item") or "").strip()
-        if not title:
-            continue
-        days = f.get("Days to Expiry")
-        if days is None:
-            continue
-        try:
-            days = int(days)
-        except (TypeError, ValueError):
-            continue
-        if days > COMPLIANCE_HORIZON_DAYS:
-            continue
-        meta = " · ".join(x for x in [f.get("Category") or "",
-                                      link_name(f.get("Property")), status] if x)
-        rows.append({
-            "title":  title,
-            "client": link_name(f.get("Client")),
-            "meta":   meta,
-            "due":    (f.get("Expiry / Next Due") or "")[:10] or None,
-            "days":   days,
-            "rag":    f.get("RAG") or "",
-            "url":    _register_url(AT_COMPLIANCE, rec["id"]),
-        })
-    rows.sort(key=lambda r: r["days"])
-    print(f"  {len(rows)} compliance items within {COMPLIANCE_HORIZON_DAYS} days")
-    return rows
-
-
-def fetch_issues():
-    """Open escalations, highest priority first, stale ones flagged."""
-    closed = {"Closed", "Resolved"}
-    pri_rank = {"Critical": 0, "High": 1, "Medium": 2, "Low": 3}
-    rows = []
-    for rec in at_fetch_all(AT_ISSUES):
-        f = rec.get("fields", {})
-        status = f.get("Status") or ""
-        if status in closed:
-            continue
-        title = (f.get("Issue") or "").strip()
-        if not title:
-            continue
-        stale  = f.get("Stale")
-        amount = f.get("Amount at Stake (DKK)")
-        bits = [f.get("Category") or "", status]
-        if f.get("Next Action"):
-            bits.append(f["Next Action"])
-        if amount:
-            bits.append(f"DKK {fmt_dkk(amount)} at stake")
-        priority = f.get("Priority") or ""
-        rows.append({
-            "title":  title,
-            "client": link_name(f.get("Client")),
-            "meta":   " · ".join(x for x in bits if x),
-            "due":    (f.get("Next Action Date") or "")[:10] or None,
-            "days":   f.get("Days Open"),
-            "rag":    ("🔴 Stale" if stale in (1, True, "1", "⚠️ Stale") else priority),
-            "url":    _register_url(AT_ISSUES, rec["id"]),
-            "_pri":   pri_rank.get(priority, 4),
-        })
-    rows.sort(key=lambda r: r["_pri"])
-    print(f"  {len(rows)} open issues")
-    return rows
-
-
-def fetch_arrears(top_n=ARREARS_TOP_N):
-    """Biggest debtors on the snapshot currently ticked Live."""
-    rows = []
-    total_live = 0.0
-    for rec in at_fetch_all(AT_ARREARS):
-        f = rec.get("fields", {})
-        if not f.get("Live"):
-            continue
-        amount = f.get("Live Arrears (DKK)") or 0
-        try:
-            amount = float(amount)
-        except (TypeError, ValueError):
-            amount = 0.0
-        if amount <= 0:
-            continue
-        total_live += amount
-        rows.append({
-            "title":  (f.get("Tenant") or f.get("Arrears Line") or "").strip(),
-            "client": link_name(f.get("Client")),
-            "amount": amount,
-            "over90": f.get("Live Over 90 (DKK)") or 0,
-            "band":   f.get("Worst Band") or "",
-            "rank":   f.get("Live Rank"),
-            "url":    _register_url(AT_ARREARS, rec["id"]),
-        })
-    rows.sort(key=lambda r: -r["amount"])
-    print(f"  {len(rows)} debtors in arrears, DKK {fmt_dkk(total_live)} total")
-    return rows[:top_n], total_live
-
-
 # ── NEWS HEADLINES ────────────────────────────────────────────────────────────
 
 def fetch_headlines(feeds, per_feed=4):
@@ -631,9 +356,7 @@ def fetch_headlines(feeds, per_feed=4):
 
 # ── AI SUMMARY ────────────────────────────────────────────────────────────────
 
-def generate_summary(overdue, today_tasks, waiting, this_week, work_days, today_str,
-                     deliverables=None, lease_events=None, compliance=None,
-                     issues=None, arrears=None):
+def generate_summary(overdue, today_tasks, waiting, this_week, work_days, today_str):
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
     today_display = date.today().strftime("%A %-d %B %Y")
 
@@ -662,34 +385,6 @@ def generate_summary(overdue, today_tasks, waiting, this_week, work_days, today_
         sections.append(f"TODAY'S TASKS ({len(today_tasks)}):\n{fmt(today_tasks)}")
     if waiting:
         sections.append(f"WAITING ({len(waiting)}):\n{fmt(waiting, 5)}")
-    # Portfolio registers — deadline-driven, so worth surfacing in the briefing
-    def fmt_reg(rows, limit=5):
-        out = []
-        for r in rows[:limit]:
-            bits = [f"  [{r.get('client') or 'No client'}] {r['title']}"]
-            if r.get("days") is not None:
-                d = r["days"]
-                bits.append(f"({abs(int(d))}d {'overdue' if int(d) < 0 else 'away'})")
-            elif r.get("due"):
-                bits.append(f"(due {r['due']})")
-            out.append(" ".join(bits))
-        return "\n".join(out)
-
-    if lease_events:
-        sections.append(f"LEASE DEADLINES ({len(lease_events)}):\n{fmt_reg(lease_events, 6)}")
-    if compliance:
-        sections.append(f"COMPLIANCE EXPIRING ({len(compliance)}):\n{fmt_reg(compliance, 4)}")
-    if deliverables:
-        sections.append(f"CLIENT DELIVERABLES ({len(deliverables)}):\n{fmt_reg(deliverables, 4)}")
-    if issues:
-        sections.append(f"OPEN ESCALATIONS ({len(issues)}):\n{fmt_reg(issues, 4)}")
-    if arrears:
-        lines = "\n".join(
-            f"  [{a.get('client') or 'No client'}] {a['title']} — DKK {fmt_dkk(a['amount'])}"
-            for a in arrears[:5]
-        )
-        sections.append(f"TOP ARREARS (live snapshot):\n{lines}")
-
     task_text = "\n\n".join(sections) or "No active tasks."
 
     system_prompt = (
@@ -702,10 +397,8 @@ def generate_summary(overdue, today_tasks, waiting, this_week, work_days, today_
         f"MUST DO TODAY\n"
         f"WATCH / CHASING\n"
         f"THIS WEEK\n\n"
-        f"Be SPECIFIC — name actual tasks, meetings, clients and amounts. Reference today's "
-        f"meetings where tasks link to them. Treat a lease notice deadline or an expiring "
-        f"compliance certificate as more urgent than an ordinary task: those dates cannot be "
-        f"moved. 2-3 sentences per section. No bullets. Plain prose."
+        f"Be SPECIFIC — name actual tasks, meetings and clients. Reference today's "
+        f"meetings where tasks link to them. 2-3 sentences per section. No bullets. Plain prose."
     )
 
     for attempt in range(4):
@@ -750,13 +443,6 @@ def format_summary_html(text):
             parts.append(f'<p>{esc(line)}</p>')
     return "\n".join(parts)
 
-def client_badge_html(client, small=False):
-    if not client:
-        return ""
-    col = client_colour(client)
-    cls = "client-tag-sm" if small else "client-tag"
-    return f'<span class="{cls}" style="background:{col}18;color:{col};border-color:{col}44">{esc(client)}</span>'
-
 def pri_dot_html(priority):
     if priority == "High":
         return '<span class="dot high">●</span>'
@@ -783,7 +469,7 @@ def task_view_json(tasks):
             "col": client_colour(t["client"]) if t["client"] else "#94a3b8",
             "due": t["due"] or "", "pri": t["priority"] or "", "hz": t["horizon"] or "",
             "status": t["status"] or "", "wt": t["work_type"] or "",
-            "src": t["source"] or "", "ctx": t["context"] or "", "url": t["url"],
+            "src": t["source"] or "", "ctx": t["context"] or "",
         })
     # "</" escaped so a task title can never close the <script> tag
     return json.dumps(rows, ensure_ascii=False).replace("</", "<\\/")
@@ -971,21 +657,20 @@ TASK_VIEW_JS = r"""
              '" data-client="' + esc(t.client) + '" data-status="' + esc(t.status) +
              '" data-priority="' + esc(t.pri) + '"';
     var day = 'data-title="' + esc(t.title) + '" data-client="' + esc(t.client) + '"';
-    var open = '<a class="open-link" href="' + esc(t.url) + '" target="_blank" title="Open in Airtable">↗</a>';
     if (small) {
       return '<div class="tv-acts">' +
         '<button class="done-btn-sm" title="Done" onclick="markDone(this)" data-page-id="' + id + '">✓</button>' +
         '<button class="defer-btn-sm" title="Tomorrow" onclick="deferTask(this,\'tomorrow\')" data-page-id="' + id + '">⏭</button>' +
         '<button class="defer-btn-sm" title="Next week" onclick="deferTask(this,\'nextweek\')" data-page-id="' + id + '">→</button>' +
         '<button class="add-day-btn-sm' + (added ? ' added' : '') + '" title="Add to My Day" onclick="addToMyDay(this)" ' + day + '>' + (added ? '✓' : '+') + '</button>' +
-        '<button class="edit-btn edit-btn-sm" title="Edit" onclick="openEditor(this)" ' + ed + '>✎</button>' + open + '</div>';
+        '<button class="edit-btn edit-btn-sm" title="Edit" onclick="openEditor(this)" ' + ed + '>✎</button></div>';
     }
     return '<div class="tv-acts">' +
       '<button class="done-btn" onclick="markDone(this)" data-page-id="' + id + '">✓ Done</button>' +
       '<button class="defer-btn" onclick="deferTask(this,\'tomorrow\')" data-page-id="' + id + '">⏭ Tmrw</button>' +
       '<button class="defer-btn" onclick="deferTask(this,\'nextweek\')" data-page-id="' + id + '">→ Wk</button>' +
       '<button class="add-day-btn' + (added ? ' added' : '') + '" onclick="addToMyDay(this)" ' + day + '>' + (added ? '✓ Added' : '+ Day') + '</button>' +
-      '<button class="edit-btn" onclick="openEditor(this)" ' + ed + '>✎ Edit</button>' + open + '</div>';
+      '<button class="edit-btn" onclick="openEditor(this)" ' + ed + '>✎ Edit</button></div>';
   }
   function meta(t) {
     return dueLabel(t) + cliChip(t) +
@@ -1156,7 +841,8 @@ TASK_VIEW_JS = r"""
     var list = live().filter(function (t) { return t.zone === 'stale'; });
     if (!list.length) return;
     if (!confirm('Move ' + list.length + ' stale tasks to ⚪ Someday and clear their due dates?\n\n' +
-                 'They stay open in Airtable — they just stop counting as overdue.')) return;
+                 'They stay open — they just stop counting as overdue.')) return;
+    var label = btn.textContent;
     btn.disabled = true;
     var i = 0, ok = 0, fail = 0;
     (function next() {
@@ -1167,14 +853,17 @@ TASK_VIEW_JS = r"""
       }
       var t = list[i++];
       btn.textContent = 'Sweeping ' + i + '/' + list.length + '…';
-      fetch(WORKER_URL, {
-        method: 'POST', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({pageId: t.id, action: 'update', props: {horizon: '⚪ Someday', due: ''}})
-      })
-      .then(function (r) { return r.json(); })
-      .then(function (d) { if (d.ok) { ok++; t.hz = '⚪ Someday'; t.due = ''; } else { fail++; } })
-      .catch(function () { fail++; })
-      .then(function () { setTimeout(next, 250); });   // stay under Airtable's 5 req/s
+      postApp('/app/api/task-action',
+        {pageId: t.id, action: 'update', props: {horizon: '⚪ Someday', due: ''}})
+      .then(function (d) {
+        if (d.expired) {                       // banner shown; stop and leave the button as it was
+          btn.disabled = false; btn.textContent = label;
+          if (ok) setTimeout(render, 1200);    // show the ones already moved
+          return;
+        }
+        if (d.ok) { ok++; t.hz = '⚪ Someday'; t.due = ''; } else { fail++; }
+        setTimeout(next, 250);                 // pace the writes, one at a time
+      });
     })();
   };
 
@@ -1275,89 +964,6 @@ def render_family_panel(family_events, today_str):
     return rows
 
 
-# ── PORTFOLIO REGISTER RENDER ─────────────────────────────────────────────────
-
-def rag_pill_html(rag):
-    """RAG values arrive from Airtable already carrying their emoji, e.g. '🟢 On track'."""
-    if not rag:
-        return ""
-    col = "#7a7468"
-    if rag.startswith("🔴") or "Passed" in rag or "Stale" in rag or rag == "High":
-        col = "#c8502a"
-    elif rag.startswith("🟠") or rag.startswith("🟡") or rag == "Medium":
-        col = "#b08a20"
-    elif rag.startswith("🟢"):
-        col = "#16a34a"
-    return f'<span class="rag-pill" style="background:{col}18;color:{col};border-color:{col}44">{esc(rag)}</span>'
-
-
-def render_register_section(heading, icon, rows, colour="var(--accent)", limit=12):
-    """Compact deadline-driven list used by every portfolio register."""
-    if not rows:
-        return ""
-    items = ""
-    for r in rows[:limit]:
-        meta = f'<div class="reg-meta">{esc(r["meta"])}</div>' if r.get("meta") else ""
-        right = (
-            days_badge_html(r.get("days"))
-            + rag_pill_html(r.get("rag"))
-            + client_badge_html(r.get("client"), small=True)
-            + f'<a class="open-link" href="{esc(r["url"])}" target="_blank">↗</a>'
-        )
-        items += (
-            f'<div class="reg-row">'
-            f'<div class="reg-left"><div class="reg-title">{esc(r["title"])}</div>{meta}</div>'
-            f'<div class="reg-right">{right}</div>'
-            f'</div>'
-        )
-    more = ""
-    if len(rows) > limit:
-        more = f'<div class="reg-more">+ {len(rows) - limit} more in Airtable</div>'
-    return (
-        f'<section class="dash-section">'
-        f'<div class="sec-head" style="--sec-col:{colour}">'
-        f'<span>{icon} {heading}</span><span class="sec-count">{len(rows)}</span>'
-        f'</div>'
-        f'<div class="reg-list">{items}{more}</div>'
-        f'</section>'
-    )
-
-
-def render_arrears_section(rows, total_live):
-    """Top debtors on the live snapshot, biggest first."""
-    if not rows:
-        return ""
-    items = ""
-    for i, a in enumerate(rows, start=1):
-        over90 = ""
-        try:
-            if float(a.get("over90") or 0) > 0:
-                over90 = f'<span class="rag-pill" style="background:#c8502a18;color:#c8502a;border-color:#c8502a44">90+ {fmt_dkk(a["over90"])}</span>'
-        except (TypeError, ValueError):
-            pass
-        items += (
-            f'<div class="reg-row">'
-            f'<div class="reg-left">'
-            f'<div class="reg-title"><span class="arr-rank">{i}</span>{esc(a["title"])}</div>'
-            f'<div class="reg-meta">{esc(a.get("band") or "")}</div>'
-            f'</div>'
-            f'<div class="reg-right">'
-            f'<span class="arr-amt">{fmt_dkk(a["amount"])}</span>{over90}'
-            f'{client_badge_html(a.get("client"), small=True)}'
-            f'<a class="open-link" href="{esc(a["url"])}" target="_blank">↗</a>'
-            f'</div></div>'
-        )
-    return (
-        f'<section class="dash-section">'
-        f'<div class="sec-head" style="--sec-col:#c8502a">'
-        f'<span>💰 Top Arrears</span>'
-        f'<span class="sec-count">DKK {fmt_dkk(total_live)} live</span>'
-        f'</div>'
-        f'<div class="reg-list">{items}</div>'
-        f'</section>'
-    )
-
-
 # ── NEWS PANEL RENDER ─────────────────────────────────────────────────────────
 
 def render_news_panel(title, icon, items):
@@ -1430,14 +1036,12 @@ def render_client_summary(tasks, today_str):
 
 def build_html(overdue, today_tasks, waiting, this_week, later, summary,
                work_days, family_events, today_str, client_names,
-               news_items, finance_items, palace_items,
-               deliverables, lease_events, compliance, issues,
-               arrears, arrears_total):
+               news_items, finance_items, palace_items):
     today_display  = datetime.strptime(today_str, "%Y-%m-%d").strftime("%A %-d %B %Y")
     generated_time = datetime.utcnow().strftime("%H:%M UTC")
     all_tasks      = overdue + today_tasks + waiting + this_week + later
     total          = len(all_tasks)
-    # Airtable Client is a singleSelect, so the editor just needs names.
+    # Client is a single-select picklist, so the editor just needs names.
     clients_json = json.dumps(client_names)
 
     # Sections
@@ -1460,15 +1064,6 @@ def build_html(overdue, today_tasks, waiting, this_week, later, summary,
     tasks_json      = task_view_json(all_tasks)
     client_col_json = json.dumps({n: client_colour(n) for n in client_names}, ensure_ascii=False)
     slipping, stale = split_overdue(overdue, today_str)
-
-    lease_html   = render_register_section("Lease Deadlines",  "🔑", lease_events, colour="#7c3aed")
-    compl_html   = render_register_section("Compliance",       "🛡", compliance,   colour="#0891b2")
-    deliv_html   = render_register_section("Client Deliverables", "📋", deliverables, colour="#2563eb")
-    issues_html  = render_register_section("Escalations",      "⚠️", issues,       colour="#c8502a")
-    arrears_html = render_arrears_section(arrears, arrears_total)
-
-    # Anything with a deadline already gone but still open
-    urgent_leases = len([r for r in lease_events if (r.get("days") or 0) < 0])
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -1556,8 +1151,6 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
 
 /* ── TASKS ── */
 .dash-section{{margin-bottom:24px;}}
-.sec-head{{font-size:.58rem;letter-spacing:3.5px;text-transform:uppercase;font-weight:700;border-bottom:2px solid var(--ink);padding-bottom:7px;margin-bottom:14px;display:flex;align-items:baseline;gap:8px;color:var(--sec-col,var(--accent));}}
-.sec-count{{font-family:'Playfair Display',serif;font-size:.75rem;color:var(--muted);letter-spacing:0;font-weight:400;margin-left:auto;}}
 .task-grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;}}
 .task-card{{background:var(--card);border:1px solid var(--border);padding:12px 14px;border-radius:2px;transition:box-shadow .15s;}}
 .task-card:hover{{box-shadow:0 2px 10px rgba(0,0,0,.07);}}
@@ -1576,13 +1169,9 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
 .badge.overdue{{color:var(--accent);border-color:var(--accent);background:rgba(200,80,42,.07);}}
 .badge.today{{color:var(--gold);border-color:var(--gold);background:rgba(176,138,32,.09);}}
 .badge.upcoming{{color:var(--muted);border-color:var(--border);}}
-.client-tag{{font-size:.52rem;letter-spacing:.8px;text-transform:uppercase;font-weight:600;padding:2px 6px;border:1px solid;display:inline-block;border-radius:2px;white-space:nowrap;}}
-.client-tag-sm{{font-size:.5rem;letter-spacing:.8px;text-transform:uppercase;font-weight:600;padding:1px 5px;border:1px solid;display:inline-block;border-radius:2px;white-space:nowrap;}}
 .wt-tag{{font-size:.55rem;color:var(--muted);padding:1px 5px;border:1px solid var(--border);white-space:nowrap;}}
 .dot{{font-size:.52rem;margin-right:2px;flex-shrink:0;}}
 .dot.high{{color:var(--accent);}}.dot.low{{color:var(--border);}}
-.open-link{{font-size:.75rem;color:var(--muted);text-decoration:none;opacity:.4;transition:opacity .15s;}}
-.open-link:hover{{opacity:1;}}
 .done-btn{{font-size:.52rem;letter-spacing:.8px;text-transform:uppercase;font-weight:600;color:var(--green);border:1px solid var(--green);background:rgba(22,163,74,.06);padding:2px 6px;cursor:pointer;transition:all .15s;white-space:nowrap;}}
 .done-btn:hover{{background:var(--green);color:white;}}
 .done-btn.saving{{color:var(--muted);border-color:var(--border);background:transparent;cursor:default;}}
@@ -1621,19 +1210,6 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
 .ed-cancel{{font-size:.52rem;letter-spacing:.8px;text-transform:uppercase;font-weight:600;color:var(--muted);border:1px solid var(--border);background:transparent;padding:4px 10px;cursor:pointer;}}
 .ed-cancel:hover{{color:var(--ink);}}
 .task-card.done-fade,.task-row.done-fade{{opacity:0;transform:translateY(-3px);transition:all .5s ease;pointer-events:none;}}
-
-/* ── PORTFOLIO REGISTERS ── */
-.reg-list{{display:flex;flex-direction:column;}}
-.reg-row{{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);}}
-.reg-row:last-child{{border-bottom:none;}}
-.reg-left{{flex:1;min-width:0;}}
-.reg-title{{font-size:.78rem;font-weight:500;line-height:1.35;color:var(--ink);}}
-.reg-meta{{font-size:.62rem;color:var(--muted);margin-top:2px;line-height:1.4;}}
-.reg-right{{display:flex;align-items:center;gap:5px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;max-width:52%;}}
-.reg-more{{font-size:.62rem;color:var(--muted);font-style:italic;padding:7px 0 0;}}
-.rag-pill{{font-size:.5rem;letter-spacing:.8px;text-transform:uppercase;font-weight:600;padding:1px 5px;border:1px solid;border-radius:2px;white-space:nowrap;}}
-.arr-rank{{font-family:'Playfair Display',serif;font-size:.72rem;color:var(--muted);margin-right:7px;}}
-.arr-amt{{font-family:'Playfair Display',serif;font-size:.9rem;color:var(--accent);white-space:nowrap;}}
 
 /* ── SIDEBAR ── */
 .sidebar-section{{margin-bottom:24px;}}
@@ -1685,6 +1261,9 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
 #copy-confirm{{font-size:.58rem;color:var(--gold);text-align:center;margin-top:6px;height:14px;opacity:0;transition:opacity .3s;}}
 #copy-confirm.show{{opacity:1;}}
 
+/* ── SESSION EXPIRED BANNER ── */
+#session-banner{{position:fixed;top:0;left:0;right:0;z-index:2000;background:var(--accent);color:#fff;text-align:center;padding:10px 16px;font-size:.8rem;font-weight:600;letter-spacing:.3px;box-shadow:0 2px 10px rgba(0,0,0,.2);}}
+
 /* ── FOOTER ── */
 .footer{{text-align:center;padding:16px;font-size:.6rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;border-top:1px solid var(--border);}}
 
@@ -1723,9 +1302,6 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
   <div class="stat blue"><strong>{len(this_week)}</strong><span>This Week</span></div>
   <div class="stat"><strong>{len(stale)}</strong><span>Stale</span></div>
   <div class="stat"><strong>{total}</strong><span>Total Open</span></div>
-  <div class="stat red"><strong>{urgent_leases}</strong><span>Deadlines Passed</span></div>
-  <div class="stat gold"><strong>{len(issues)}</strong><span>Escalations</span></div>
-  <div class="stat red"><strong>{fmt_dkk(arrears_total)}</strong><span>Arrears DKK</span></div>
 </div>
 
 {client_sum_html}
@@ -1760,13 +1336,6 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
       <div class="tv-view" id="tv-matrix"></div>
       <div class="tv-view" id="tv-client"></div>
     </section>
-
-    <!-- Portfolio registers -->
-    {lease_html}
-    {compl_html}
-    {deliv_html}
-    {issues_html}
-    {arrears_html}
 
   </div>
 
@@ -1851,12 +1420,52 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
   </div>
 </div>
 <script>
-  var WORKER_URL = "{WORKER_URL}";
+  // ── WRITE-BACKS (same-origin, behind Cloudflare Access) ──
+  // Every write-back and the refresh go through postApp(). It resolves to
+  //   {{ok:true}}                      saved
+  //   {{ok:false, error:'…'}}          refused (400 etc.): callers show "Error"
+  //   {{ok:false, expired:true}}       signed out: banner shown, callers leave the card alone
+  // A signed-out session shows up as a redirect to the Access login (opaque with
+  // redirect:'manual'), a 401 from the Worker, or a failed fetch.
+  var SESSION_EXPIRED_TEXT = 'Your sign-in has expired, reload the page';
+  function showSessionExpired() {{
+    if (document.getElementById('session-banner')) return;
+    var b = document.createElement('div');
+    b.id = 'session-banner';
+    b.setAttribute('role', 'alert');
+    b.textContent = SESSION_EXPIRED_TEXT;
+    document.body.appendChild(b);
+  }}
+  function postApp(path, body) {{
+    return fetch(path, {{
+      method: 'POST',
+      headers: {{ 'Content-Type': 'application/json' }},
+      credentials: 'include',
+      redirect: 'manual',
+      body: JSON.stringify(body)
+    }})
+    .then(function(r) {{
+      if (r.type === 'opaqueredirect' || r.redirected || r.status === 401) return {{ ok: false, expired: true }};
+      return r.json().then(function(d) {{
+        if (r.ok && d && d.ok) return {{ ok: true }};
+        return {{ ok: false, error: (d && d.error) || ('HTTP ' + r.status) }};
+      }}, function() {{
+        return {{ ok: false, error: 'HTTP ' + r.status }};
+      }});
+    }}, function() {{
+      return {{ ok: false, expired: true }};
+    }})
+    .then(function(res) {{
+      if (res.expired) showSessionExpired();
+      return res;
+    }});
+  }}
+
   var items = [];
   var dragSrc = null;
 
   // ── TASK EDITOR ──
-  var CLIENTS = {clients_json};   // client names — Airtable Client is a singleSelect
+  var CLIENTS = {clients_json};   // client names — Client is a single-select picklist
   var editTarget = null;
 
   function openEditor(btn) {{
@@ -1931,18 +1540,14 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
 
     var editId = editTarget.getAttribute('data-page-id');
     btnSave.disabled = true; btnSave.textContent = 'Saving…';
-    fetch(WORKER_URL, {{
-      method: 'POST',
-      headers: {{ 'Content-Type': 'application/json' }},
-      body: JSON.stringify({{
-        pageId: editTarget.getAttribute('data-page-id'),
-        action: 'update',
-        props: props
-      }})
+    postApp('/app/api/task-action', {{
+      pageId: editTarget.getAttribute('data-page-id'),
+      action: 'update',
+      props: props
     }})
-    .then(function(r) {{ return r.json(); }})
     .then(function(data) {{
       btnSave.disabled = false; btnSave.textContent = 'Save';
+      if (data.expired) return;   // banner shown; task and popover left as they were
       if (data.ok) {{
         editTarget.setAttribute('data-horizon',  horizon);
         editTarget.setAttribute('data-due',      due);
@@ -1951,7 +1556,7 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
         editTarget.setAttribute('data-priority', priority);
         editTarget.classList.add('edited');
         msg.classList.remove('err');
-        msg.textContent = '✓ Saved to Airtable';
+        msg.textContent = '✓ Saved';
         setTimeout(function() {{
           closeEditor();
           if (window.tvPatch) tvPatch(editId, props);
@@ -1960,11 +1565,6 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
         msg.classList.add('err');
         msg.textContent = '✗ ' + (data.error || 'Failed');
       }}
-    }})
-    .catch(function() {{
-      btnSave.disabled = false; btnSave.textContent = 'Save';
-      msg.classList.add('err');
-      msg.textContent = '✗ Network error';
     }});
   }}
 
@@ -2075,24 +1675,21 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
     if (btn.classList.contains('saving')) return;
     var pageId = btn.getAttribute('data-page-id');
     var card   = btn.closest('.task-card, .task-row');
+    var label  = btn.textContent;
     btn.classList.add('saving');
     btn.textContent = btn.classList.contains('done-btn-sm') ? '…' : 'Saving…';
-    fetch(WORKER_URL, {{
-      method: 'POST',
-      headers: {{ 'Content-Type': 'application/json' }},
-      body: JSON.stringify({{ pageId: pageId, action: 'done' }})
-    }})
-    .then(function(r) {{ return r.json(); }})
+    postApp('/app/api/task-action', {{ pageId: pageId, action: 'done' }})
     .then(function(data) {{
-      if (data.ok) {{
+      if (data.expired) {{
+        btn.classList.remove('saving'); btn.textContent = label;
+      }} else if (data.ok) {{
         btn.textContent = btn.classList.contains('done-btn-sm') ? '✓' : '✓ Done';
         if (card) card.classList.add('done-fade');
         if (window.tvRemove) tvRemove(pageId);
       }} else {{
-        btn.textContent = 'Error'; btn.style.color = 'var(--accent)';
+        btn.textContent = 'Error'; btn.style.color = 'var(--accent)'; btn.title = data.error || '';
       }}
-    }})
-    .catch(function() {{ btn.textContent = 'Error'; btn.style.color = 'var(--accent)'; }});
+    }});
   }}
 
   function deferTask(btn, mode) {{
@@ -2118,22 +1715,18 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
 
     btn.classList.add('saving');
     btn.textContent = small ? '…' : 'Saving…';
-    fetch(WORKER_URL, {{
-      method: 'POST',
-      headers: {{ 'Content-Type': 'application/json' }},
-      body: JSON.stringify({{ pageId: pageId, action: 'update', props: {{ horizon: horizon, due: dueDate }} }})
-    }})
-    .then(function(r) {{ return r.json(); }})
+    postApp('/app/api/task-action', {{ pageId: pageId, action: 'update', props: {{ horizon: horizon, due: dueDate }} }})
     .then(function(data) {{
-      if (data.ok) {{
+      if (data.expired) {{
+        btn.classList.remove('saving'); btn.textContent = label;
+      }} else if (data.ok) {{
         btn.textContent = small ? '✓' : '✓ ' + label.slice(2);
         if (card) card.classList.add('done-fade');
         if (window.tvPatch) tvPatch(pageId, {{ horizon: horizon, due: dueDate }}, true);
       }} else {{
-        btn.textContent = 'Error'; btn.style.color = 'var(--accent)';
+        btn.textContent = 'Error'; btn.style.color = 'var(--accent)'; btn.title = data.error || '';
       }}
-    }})
-    .catch(function() {{ btn.textContent = 'Error'; btn.style.color = 'var(--accent)'; }});
+    }});
   }}
 
   function toggleCS() {{
@@ -2151,26 +1744,19 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
     if (btn.classList.contains('spinning')) return;
     btn.classList.add('spinning');
     btn.textContent = '↻ Refreshing…';
-    fetch(WORKER_URL + '/refresh', {{
-      method: 'POST',
-      headers: {{ 'Content-Type': 'application/json' }},
-      body: JSON.stringify({{}})
-    }})
-    .then(function(r) {{ return r.json(); }})
+    postApp('/app/api/refresh', {{}})
     .then(function(data) {{
       btn.classList.remove('spinning');
-      if (data.ok) {{
+      if (data.expired) {{
+        btn.textContent = '↻ Refresh';
+      }} else if (data.ok) {{
         btn.classList.add('done');
         btn.textContent = '✓ Building… reload in ~30s';
         setTimeout(function() {{ btn.classList.remove('done'); btn.textContent = '↻ Refresh'; }}, 35000);
       }} else {{
-        btn.classList.add('error'); btn.textContent = '✗ Failed';
-        setTimeout(function() {{ btn.classList.remove('error'); btn.textContent = '↻ Refresh'; }}, 4000);
+        btn.classList.add('error'); btn.textContent = '✗ Failed'; btn.title = data.error || '';
+        setTimeout(function() {{ btn.classList.remove('error'); btn.textContent = '↻ Refresh'; btn.title = ''; }}, 4000);
       }}
-    }})
-    .catch(function() {{
-      btn.classList.remove('spinning'); btn.classList.add('error'); btn.textContent = '✗ Failed';
-      setTimeout(function() {{ btn.classList.remove('error'); btn.textContent = '↻ Refresh'; }}, 4000);
     }});
   }}
 
@@ -2189,6 +1775,21 @@ body{{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);
 </html>"""
 
 
+# ── PUBLISH ───────────────────────────────────────────────────────────────────
+
+def publish_briefing(html):
+    """PUT the finished page to {GDH_API_URL}/api/briefing; the hub serves it at /."""
+    url, token = gdh_config()
+    body = html.encode("utf-8")
+    resp = requests.put(
+        f"{url}/api/briefing", data=body, timeout=60,
+        headers={"Authorization": f"Bearer {token}",
+                 "Content-Type": "text/html; charset=utf-8"},
+    )
+    resp.raise_for_status()
+    print(f"  Published ({len(body):,} bytes, HTTP {resp.status_code})")
+
+
 # ── MAIN ──────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
@@ -2197,8 +1798,10 @@ if __name__ == "__main__":
     print(f"Daily Dashboard — {today_str}")
     print(f"{'='*60}")
 
-    print("\nBuilding link lookup...")
-    client_names, _links = build_link_lookup()
+    gdh_config()   # fail fast if GDH_API_URL / GDH_API_TOKEN are missing
+
+    print("\nFetching picklists...")
+    client_names = fetch_client_names()
 
     print("\nFetching tasks...")
     tasks = fetch_tasks()
@@ -2206,13 +1809,6 @@ if __name__ == "__main__":
     print("\nBucketing tasks...")
     overdue, today_tasks, waiting, this_week, later = bucket_tasks(tasks, today_str)
     print(f"  Today:{len(today_tasks)} Overdue:{len(overdue)} Waiting:{len(waiting)} Week:{len(this_week)} Later:{len(later)}")
-
-    print("\nFetching portfolio registers...")
-    lease_events  = fetch_lease_events()
-    compliance    = fetch_compliance()
-    deliverables  = fetch_deliverables()
-    issues        = fetch_issues()
-    arrears, arrears_total = fetch_arrears()
 
     print("\nFetching calendar data...")
     work_days, family_events = fetch_all_calendar_data(today_str)
@@ -2223,20 +1819,19 @@ if __name__ == "__main__":
     palace_items  = fetch_headlines(PALACE_FEEDS, per_feed=4)
 
     print("\nGenerating AI summary...")
-    summary = generate_summary(overdue, today_tasks, waiting, this_week, work_days, today_str,
-                               deliverables=deliverables, lease_events=lease_events,
-                               compliance=compliance, issues=issues, arrears=arrears)
+    summary = generate_summary(overdue, today_tasks, waiting, this_week, work_days, today_str)
     print(f"  Done ({len(summary)} chars)")
 
     print("\nBuilding HTML...")
     html = build_html(overdue, today_tasks, waiting, this_week, later, summary,
                       work_days, family_events, today_str, client_names,
-                      news_items, finance_items, palace_items,
-                      deliverables, lease_events, compliance, issues,
-                      arrears, arrears_total)
+                      news_items, finance_items, palace_items)
 
+    # Kept locally for debugging (e.g. as an Actions artifact); no longer committed.
     with open("index.html", "w", encoding="utf-8") as f:
         f.write(html)
-
     print(f"  index.html written ({len(html):,} bytes)")
+
+    print("\nPublishing to Gilbert Data Hub...")
+    publish_briefing(html)
     print(f"{'='*60}\n")
